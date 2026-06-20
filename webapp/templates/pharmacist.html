@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Pharmacist Review</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0D1B2A; color: #E8F4FD; padding: 28px 20px; }
+    .logo { font-size: 11px; letter-spacing: 5px; color: #4FC3F7; margin-bottom: 24px; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: #90CAF9; font-size: 14px; margin-bottom: 28px; }
+    .back { color: #4FC3F7; font-size: 13px; text-decoration: none; display: block; margin-bottom: 20px; }
+    .card { background: #1A2A3A; border-radius: 12px; padding: 16px; margin-bottom: 14px; border-left: 3px solid #546E7A; }
+    .card.Confirmed { border-left-color: #2E7D32; }
+    .card.Rejected  { border-left-color: #B71C1C; }
+    .card.Pending   { border-left-color: #E65100; }
+    .patient-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .drug    { font-size: 14px; color: #4FC3F7; margin-bottom: 2px; }
+    .meddra  { font-size: 13px; color: #90CAF9; margin-bottom: 10px; }
+    .scores  { display: flex; gap: 12px; margin-bottom: 12px; }
+    .score-box { background: #0D1B2A; border-radius: 8px; padding: 8px 14px; text-align: center; flex: 1; }
+    .score-val { font-size: 20px; font-weight: 700; color: #4FC3F7; }
+    .score-lbl { font-size: 10px; color: #546E7A; letter-spacing: 1px; }
+    .status-badge { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 11px; margin-bottom: 12px; }
+    .status-Confirmed { background: #2E7D3220; color: #81C784; border: 1px solid #2E7D32; }
+    .status-Rejected  { background: #B71C1C20; color: #EF9A9A; border: 1px solid #B71C1C; }
+    .status-Pending   { background: #E6510020; color: #FFB74D; border: 1px solid #E65100; }
+    form.inline { display: flex; gap: 8px; }
+    select { background: #0D1B2A; border: 1px solid #1E3A5F; color: #E8F4FD; padding: 8px; border-radius: 8px; font-size: 13px; flex: 1; }
+    button.update { padding: 8px 16px; background: #1565C0; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .report-link { display: inline-block; margin-top: 8px; font-size: 12px; color: #4FC3F7; text-decoration: none; }
+    .empty { text-align: center; padding: 40px; color: #546E7A; font-size: 14px; }
+    .tools { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .tool-btn { padding: 10px 16px; background: #1A2A3A; border: 1px solid #1E3A5F; color: #90CAF9;
+                border-radius: 8px; font-size: 13px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="logo">PVPRO</div>
+  <a href="/" class="back">← Patient Dashboard</a>
+  <h2>Safety Assessment Review</h2>
+<p class="sub">Review automated causality assessments for reported adverse reactions.</p>
+  <div class="tools">
+    <a href="/naranjo"       class="tool-btn">🔬 Naranjo Calculator</a>
+    <a href="/nlp-process"   class="tool-btn">🤖 Run NLP on symptoms</a>
+    <a href="/signals/scan"  class="tool-btn">📈 Run Signal Scan</a>
+    <a href="/signals?drug=Aspirin&pt=Nausea" class="tool-btn">📊 PRR Example</a>
+  </div>
+
+  {% if assessments %}
+    {% for a in assessments %}
+    <div class="card {{ a.pharmacist_status }}">
+      <div class="patient-name">{{ a.patient_name }}</div>
+      <div class="drug">💊 {{ a.drug_name }}</div>
+      <div class="meddra">MedDRA PT: {{ a.meddra_pt or 'Not mapped yet' }}</div>
+      <div class="scores">
+        <div class="score-box">
+          <div class="score-val">{{ a.confidence_score }}/100</div>
+          <div class="score-lbl">CONFIDENCE</div>
+        </div>
+        <div class="score-box">
+          <div class="score-val">{{ a.naranjo_score }}</div>
+          <div class="score-lbl">NARANJO</div>
+        </div>
+        <div class="score-box">
+          <div class="score-val" style="font-size:14px;">{{ a.naranjo_category }}</div>
+          <div class="score-lbl">CATEGORY</div>
+        </div>
+      </div>
+      <span class="status-badge status-{{ a.pharmacist_status }}">{{ a.pharmacist_status }}</span>
+      <form class="inline" method="POST" action="/pharmacist/update/{{ a.assessment_id }}">
+        <select name="status">
+          <option value="Confirmed"  {% if a.pharmacist_status=='Confirmed'  %}selected{% endif %}>Confirmed</option>
+          <option value="Pending"    {% if a.pharmacist_status=='Pending'    %}selected{% endif %}>Pending</option>
+          <option value="Rejected"   {% if a.pharmacist_status=='Rejected'   %}selected{% endif %}>Rejected</option>
+        </select>
+        <button class="update" type="submit">Update</button>
+      </form>
+      {% if a.pharmacist_status == 'Confirmed' %}
+      <a class="report-link" href="/report/{{ a.assessment_id }}">📄 Download PDF Report</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      No assessments yet.<br>
+      Run /test then /adr-assess/1 to create your first assessment.
+    </div>
+  {% endif %}
+</body>
+</html>

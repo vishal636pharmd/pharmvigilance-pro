@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Bill Saved</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0D1B2A; color: #E8F4FD;
+      min-height: 100vh; padding: 32px 20px;
+      display: flex; flex-direction: column;
+    }
+    .check {
+      width: 56px; height: 56px;
+      background: #1B5E2022; border: 2px solid #2E7D32; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-bottom: 20px;
+    }
+    .check.error {
+      background: #B71C1C22; border-color: #EF5350;
+    }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .sub { color: #90CAF9; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+
+    .error-box {
+      background: #B71C1C22;
+      border: 1px solid #EF5350;
+      color: #EF9A9A;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .profile-card {
+      background: #1A2A3A;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .profile-card .name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .profile-card .meta { color: #90CAF9; }
+
+    .section-label {
+      font-size: 11px; letter-spacing: 1.5px; color: #546E7A;
+      margin-bottom: 10px; margin-top: 8px;
+    }
+
+    .drug-card {
+      background: #1A2A3A;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .drug-name { font-size: 15px; font-weight: 600; }
+    .drug-meta { font-size: 12px; color: #90CAF9; margin-top: 2px; }
+    .drug-price { font-size: 14px; color: #4FC3F7; font-weight: 600; }
+
+    .reference-note {
+      font-size: 11px; color: #546E7A; margin-top: 4px;
+    }
+
+    .reminder-box {
+      margin-top: auto;
+      background: #1565C015;
+      border: 1px solid #1565C0;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      color: #90CAF9;
+      line-height: 1.6;
+      text-align: center;
+    }
+    .reminder-box strong { color: #4FC3F7; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #1565C0;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  {% if error %}
+    <div class="check error">✕</div>
+    <h2>Something went wrong</h2>
+    <div class="error-box">{{ error }}</div>
+    <a href="/paste-url" class="btn">Try entering bill link manually</a>
+
+  {% else %}
+    <div class="check">✓</div>
+    <h2>Bill saved successfully.</h2>
+    <p class="sub">Your medicines have been added to your profile.</p>
+
+    {% if patient %}
+    <div class="profile-card">
+      <div class="name">{{ patient.full_name }}</div>
+      <div class="meta">{{ patient.age }} years · {{ patient.gender }} · {{ patient.phone }}</div>
+    </div>
+    {% endif %}
+
+    <div class="section-label">MEDICINES FROM THIS BILL</div>
+
+    {% if drugs %}
+      {% for drug in drugs %}
+      <div class="drug-card">
+        <div>
+          <div class="drug-name">{{ drug.drug_name }}</div>
+          <div class="drug-meta">Qty: {{ drug.quantity }}</div>
+        </div>
+        <div class="drug-price">₹{{ drug.price }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="drug-card">
+        <div class="drug-name" style="color:#546E7A;">No medicines detected</div>
+      </div>
+    {% endif %}
+
+    {% if bill_name_on_invoice %}
+    <div class="reference-note">
+      Bill printed name: "{{ bill_name_on_invoice }}" · Bill date: {{ bill_date }}
+      <br>(stored for reference only — your medicines are linked to your profile above)
+    </div>
+    {% endif %}
+
+    <div class="reminder-box">
+      We'll check in with you in <strong>3 days</strong> to ask
+      if you've experienced any side effects.
+    </div>
+
+    <a href="/" class="btn">Done →</a>
+  {% endif %}
+</body>
+</html>

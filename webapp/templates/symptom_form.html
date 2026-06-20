@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — How are you feeling?</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0D1B2A; color: #E8F4FD;
+      min-height: 100vh; padding: 28px 20px;
+    }
+
+    .logo { font-size: 11px; letter-spacing: 5px; color: #4FC3F7; margin-bottom: 24px; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: #90CAF9; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+
+    /* Drug info card at top */
+    .drug-card {
+      background: #1A2A3A; border-radius: 12px; padding: 16px;
+      margin-bottom: 28px; border-left: 3px solid #1565C0;
+    }
+    .drug-card .label { font-size: 11px; color: #546E7A; letter-spacing: 1px; margin-bottom: 4px; }
+    .drug-card .name  { font-size: 17px; font-weight: 700; color: #4FC3F7; }
+    .drug-card .meta  { font-size: 12px; color: #90CAF9; margin-top: 4px; }
+
+    /* Section labels */
+    .section-label {
+      font-size: 12px; letter-spacing: 1px; color: #546E7A;
+      margin-bottom: 12px; margin-top: 24px;
+    }
+
+    /* Symptom quick-select chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+    .chip {
+      background: #1A2A3A; border: 1px solid #1E3A5F;
+      border-radius: 20px; padding: 8px 16px;
+      font-size: 13px; color: #90CAF9;
+      cursor: pointer; user-select: none;
+      transition: all 0.15s;
+    }
+    .chip.selected {
+      background: #1565C0; border-color: #1565C0; color: #fff;
+    }
+
+    /* Free text area */
+    textarea {
+      width: 100%; background: #1A2A3A; border: 1px solid #1E3A5F;
+      border-radius: 10px; padding: 14px; color: #E8F4FD;
+      font-size: 14px; height: 80px; resize: none; outline: none;
+      margin-top: 12px;
+    }
+    textarea:focus { border-color: #1565C0; }
+
+    /* Severity picker */
+    .severity-row { display: flex; gap: 8px; margin-top: 12px; }
+    .sev-btn {
+      flex: 1; text-align: center; padding: 12px 8px;
+      background: #1A2A3A; border: 1px solid #1E3A5F;
+      border-radius: 10px; font-size: 13px; color: #90CAF9;
+      cursor: pointer; user-select: none; transition: all 0.15s;
+    }
+    .sev-btn.sel-mild     { background: #2E7D3220; border-color: #2E7D32; color: #81C784; }
+    .sev-btn.sel-moderate { background: #E6510020; border-color: #E65100; color: #FFB74D; }
+    .sev-btn.sel-severe   { background: #B71C1C20; border-color: #B71C1C; color: #EF9A9A; }
+
+    /* Yes/No toggle buttons */
+    .toggle-row { display: flex; gap: 8px; margin-top: 10px; }
+    .toggle-btn {
+      flex: 1; text-align: center; padding: 12px;
+      background: #1A2A3A; border: 1px solid #1E3A5F;
+      border-radius: 10px; font-size: 14px; color: #90CAF9;
+      cursor: pointer; user-select: none; transition: all 0.15s;
+    }
+    .toggle-btn.sel-yes { background: #1565C020; border-color: #1565C0; color: #4FC3F7; }
+    .toggle-btn.sel-no  { background: #37474F20; border-color: #546E7A;  color: #B0BEC5; }
+
+    /* Submit buttons */
+    .btn-primary {
+      display: block; width: 100%; padding: 16px;
+      background: #1565C0; color: #fff; border: none;
+      border-radius: 12px; font-size: 16px; font-weight: 600;
+      margin-top: 28px; cursor: pointer;
+    }
+    .btn-secondary {
+      display: block; width: 100%; padding: 14px;
+      background: transparent; border: 1px solid #1E3A5F;
+      color: #90CAF9; border-radius: 12px; font-size: 14px;
+      margin-top: 12px; cursor: pointer; text-align: center;
+      text-decoration: none;
+    }
+
+    .error-msg {
+      background: #B71C1C22; border: 1px solid #EF5350; color: #EF9A9A;
+      padding: 10px 14px; border-radius: 8px; font-size: 13px;
+      margin-top: 12px; display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo">PVPRO</div>
+  <h2>Hi {{ patient.full_name }},</h2>
+  <p class="sub">It's been 3 days since you started this medicine. Have you noticed anything unusual?</p>
+
+  <!-- Drug info -->
+  <div class="drug-card">
+    <div class="label">MEDICINE</div>
+    <div class="name">{{ drug.drug_name }}</div>
+    <div class="meta">Reminder date: {{ drug.reminder_date }}</div>
+  </div>
+
+  <form id="symptomForm" method="POST" action="/symptom/submit">
+    <!-- Hidden fields -->
+    <input type="hidden" name="patient_id"  value="{{ patient.patient_id }}">
+    <input type="hidden" name="drug_id"     value="{{ drug.drug_id }}">
+    <input type="hidden" name="drug_name"   value="{{ drug.drug_name }}">
+    <input type="hidden" name="symptom_text"   id="symptomText">
+    <input type="hidden" name="severity"       id="severityInput"       value="Mild">
+    <input type="hidden" name="timing_ok"      id="timingOkInput"       value="1">
+    <input type="hidden" name="drug_stopped"   id="drugStoppedInput"    value="0">
+    <input type="hidden" name="symptom_improved" id="symptomImprovedInput" value="0">
+
+    <!-- SECTION 1: Quick-select common symptoms -->
+    <div class="section-label">QUICK SELECT — TAP ALL THAT APPLY</div>
+    <div class="chips" id="chipContainer">
+      <div class="chip" data-text="swollen feet">Swollen feet</div>
+      <div class="chip" data-text="skin rash">Skin rash</div>
+      <div class="chip" data-text="itching">Itching</div>
+      <div class="chip" data-text="nausea">Nausea</div>
+      <div class="chip" data-text="vomiting">Vomiting</div>
+      <div class="chip" data-text="loose stools">Loose stools</div>
+      <div class="chip" data-text="stomach pain">Stomach pain</div>
+      <div class="chip" data-text="headache">Headache</div>
+      <div class="chip" data-text="dizziness">Dizziness</div>
+      <div class="chip" data-text="fever">Fever</div>
+      <div class="chip" data-text="tiredness">Tiredness</div>
+      <div class="chip" data-text="muscle pain">Muscle pain</div>
+      <div class="chip" data-text="difficulty breathing">Difficulty breathing</div>
+    </div>
+
+    <!-- SECTION 2: Free text -->
+    <div class="section-label">OR DESCRIBE IN YOUR OWN WORDS</div>
+    <textarea id="freeText" placeholder="e.g. I feel a bit dizzy since yesterday evening, also some redness on my arms..."></textarea>
+
+    <!-- SECTION 3: Severity -->
+    <div class="section-label">HOW SEVERE IS IT?</div>
+    <div class="severity-row">
+      <div class="sev-btn" data-value="Mild"     id="sev-mild">😊 Mild</div>
+      <div class="sev-btn" data-value="Moderate" id="sev-moderate">😐 Moderate</div>
+      <div class="sev-btn" data-value="Severe"   id="sev-severe">😟 Severe</div>
+    </div>
+
+    <!-- SECTION 4: Timing question -->
+    <div class="section-label">DID THE SYMPTOM START AFTER TAKING THIS MEDICINE?</div>
+    <div class="toggle-row">
+      <div class="toggle-btn" data-field="timingOkInput" data-value="1" id="timing-yes">Yes</div>
+      <div class="toggle-btn" data-field="timingOkInput" data-value="0" id="timing-no">No</div>
+    </div>
+
+    <!-- SECTION 5: Dechallenge questions (visible only if symptom present) -->
+    <div class="section-label">DID YOU STOP TAKING THE MEDICINE?</div>
+    <div class="toggle-row">
+      <div class="toggle-btn" data-field="drugStoppedInput" data-value="1" id="stopped-yes">Yes</div>
+      <div class="toggle-btn" data-field="drugStoppedInput" data-value="0" id="stopped-no">No</div>
+    </div>
+
+    <div class="section-label">IF YES — DID THE SYMPTOM IMPROVE AFTER STOPPING?</div>
+    <div class="toggle-row">
+      <div class="toggle-btn" data-field="symptomImprovedInput" data-value="1" id="improved-yes">Yes</div>
+      <div class="toggle-btn" data-field="symptomImprovedInput" data-value="0" id="improved-no">Not sure</div>
+    </div>
+
+    <div class="error-msg" id="errorMsg">Please select or describe at least one symptom.</div>
+
+    <button type="submit" class="btn-primary">Submit Report →</button>
+  </form>
+
+  <!-- No symptom option -->
+  <form method="POST" action="/symptom/none">
+    <input type="hidden" name="patient_id" value="{{ patient.patient_id }}">
+    <input type="hidden" name="drug_id"    value="{{ drug.drug_id }}">
+    <input type="hidden" name="drug_name"  value="{{ drug.drug_name }}">
+    <button type="submit" class="btn-secondary">I haven't noticed any side effects</button>
+  </form>
+
+  <script>
+    // ── Chip selection ──────────────────────────────────────────────────
+    const chips = document.querySelectorAll('.chip');
+    let selectedChips = [];
+
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('selected');
+        const text = chip.dataset.text;
+        if (chip.classList.contains('selected')) {
+          selectedChips.push(text);
+        } else {
+          selectedChips = selectedChips.filter(t => t !== text);
+        }
+      });
+    });
+
+    // ── Severity picker ─────────────────────────────────────────────────
+    const sevBtns = document.querySelectorAll('.sev-btn');
+    // Default = Mild
+    document.getElementById('sev-mild').classList.add('sel-mild');
+
+    sevBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        sevBtns.forEach(b => b.className = 'sev-btn');
+        const val = btn.dataset.value;
+        btn.classList.add('sel-' + val.toLowerCase());
+        document.getElementById('severityInput').value = val;
+      });
+    });
+
+    // ── Yes/No toggles ──────────────────────────────────────────────────
+    function setupToggle(yesId, noId, fieldId, yesVal, noVal) {
+      const yesBtn = document.getElementById(yesId);
+      const noBtn  = document.getElementById(noId);
+
+      // Default: Yes selected for timing, No for others
+      if (yesId === 'timing-yes') yesBtn.classList.add('sel-yes');
+      else noBtn.classList.add('sel-no');
+
+      yesBtn.addEventListener('click', () => {
+        yesBtn.classList.add('sel-yes');   yesBtn.classList.remove('sel-no');
+        noBtn.classList.remove('sel-yes'); noBtn.classList.add('sel-no');
+        document.getElementById(fieldId).value = yesVal;
+      });
+      noBtn.addEventListener('click', () => {
+        noBtn.classList.add('sel-no');     noBtn.classList.remove('sel-yes');
+        yesBtn.classList.remove('sel-no'); yesBtn.classList.add('sel-no');
+        document.getElementById(fieldId).value = noVal;
+      });
+    }
+
+    setupToggle('timing-yes',  'timing-no',  'timingOkInput',       '1', '0');
+    setupToggle('stopped-yes', 'stopped-no', 'drugStoppedInput',    '1', '0');
+    setupToggle('improved-yes','improved-no','symptomImprovedInput','1', '0');
+
+    // ── Form submit validation ──────────────────────────────────────────
+    document.getElementById('symptomForm').addEventListener('submit', (e) => {
+      const free     = document.getElementById('freeText').value.trim();
+      const combined = [...selectedChips, free].filter(Boolean).join(', ');
+
+      if (!combined) {
+        e.preventDefault();
+        const err = document.getElementById('errorMsg');
+        err.style.display = 'block';
+        err.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
+      document.getElementById('symptomText').value = combined;
+    });
+  </script>
+</body>
+</html>

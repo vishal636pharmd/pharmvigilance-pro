@@ -1,0 +1,8 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+database/pvpro.db
+reports/generated_pdfs/*.pdf
+reports/generated_pdfs/*.xml
+.env

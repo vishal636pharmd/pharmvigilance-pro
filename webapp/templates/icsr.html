@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Generate ICSR</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0D1B2A;
+           color: #E8F4FD; padding: 28px 20px; }
+    .logo { font-size: 11px; letter-spacing: 5px; color: #4FC3F7; margin-bottom: 24px; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: #90CAF9; font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
+    .card { background: #1A2A3A; border-radius: 12px; padding: 20px;
+            margin-bottom: 16px; border-left: 4px solid #1565C0; }
+    .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: #4FC3F7; }
+    .card p  { font-size: 13px; color: #90CAF9; line-height: 1.6; margin-bottom: 14px; }
+    .btn { display: block; width: 100%; padding: 14px; border: none;
+           border-radius: 10px; font-size: 15px; font-weight: 600;
+           text-align: center; text-decoration: none; cursor: pointer; margin-bottom: 8px; }
+    .btn-blue  { background: #1565C0; color: #fff; }
+    .btn-green { background: #1B5E20; color: #A5D6A7; border: 1px solid #2E7D32; }
+    .btn-both  { background: #4A148C; color: #E1BEE7; border: 1px solid #7B1FA2; }
+    .info-box { background: #1565C015; border: 1px solid #1565C0;
+                border-radius: 10px; padding: 16px; font-size: 13px;
+                color: #90CAF9; line-height: 1.8; margin-bottom: 20px; }
+    .info-box strong { color: #4FC3F7; }
+    .back { color: #4FC3F7; font-size: 13px; text-decoration: none;
+            display: block; margin-bottom: 20px; }
+    .step { display: flex; gap: 12px; margin-bottom: 12px; }
+    .step-num { min-width: 28px; height: 28px; background: #1565C020;
+                border: 1px solid #1565C0; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 12px; color: #4FC3F7; font-weight: 700; }
+    .step-text { font-size: 13px; color: #B0BEC5; padding-top: 4px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="logo">PVPRO</div>
+  <a href="/" class="back">← Dashboard</a>
+
+  <h2>Generate ICSR Report</h2>
+  <p class="sub">Individual Case Safety Report for Symptom Report #{{ report_id }}</p>
+
+  <div class="info-box">
+  <strong>Automated Safety Reporting</strong><br>
+  This system cross-references reported reactions against the FDA's
+  OpenFDA drug safety database. Unlisted reactions are automatically
+  compiled into a regulatory-format safety report for submission to
+  PvPI (Pharmacovigilance Programme of India).
+</div>
+
+  <div class="card">
+    <h3>📄 CIOMS I PDF Report</h3>
+    <p>Standard international paper format. Human-readable. You can print this
+       and submit physically or attach to VigiFlow submission.</p>
+    <a href="/icsr/cioms/{{ report_id }}" class="btn btn-blue">
+      Download CIOMS I PDF →
+    </a>
+  </div>
+
+  <div class="card">
+    <h3>💾 ICH E2B(R3) XML Report</h3>
+    <p>Electronic format accepted by PvPI VigiFlow portal. Upload this file
+       directly to https://vigiflow.ipc.gov.in for official submission.</p>
+    <a href="/icsr/xml/{{ report_id }}" class="btn btn-green">
+      Download E2B(R3) XML →
+    </a>
+  </div>
+
+  <div class="card">
+    <h3>⚡ Generate Both + Instructions</h3>
+    <p>Generates both files and gives you step-by-step submission instructions.</p>
+    <a href="/icsr/auto/{{ report_id }}" class="btn btn-both">
+      Auto-generate + Get Instructions →
+    </a>
+  </div>
+
+  <div class="info-box">
+    <strong>How to submit to PvPI VigiFlow:</strong>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Download the E2B XML file above</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Go to: <strong>https://vigiflow.ipc.gov.in</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Register as a reporter (free, takes 2 minutes)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Upload the XML file OR fill manually using the CIOMS PDF as reference</div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-text">Submit — you will get a PvPI report number back</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Thank You</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0D1B2A; color: #E8F4FD;
+      min-height: 100vh; padding: 40px 20px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+    }
+    .icon {
+      width: 72px; height: 72px;
+      background: #1B5E2022; border: 2px solid #2E7D32; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; margin-bottom: 28px;
+    }
+    h2 { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
+    .sub { color: #90CAF9; font-size: 15px; line-height: 1.7; margin-bottom: 32px; max-width: 320px; }
+
+    .report-card {
+      background: #1A2A3A; border-radius: 12px; padding: 16px 20px;
+      text-align: left; width: 100%; max-width: 360px; margin-bottom: 24px;
+    }
+    .report-card .label { font-size: 11px; color: #546E7A; letter-spacing: 1px; margin-bottom: 4px; }
+    .report-card .value { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .report-card .value.highlight { color: #4FC3F7; }
+
+    .severity-badge {
+      display: inline-block; padding: 4px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+    }
+    .severity-badge.Mild     { background: #2E7D3220; color: #81C784; border: 1px solid #2E7D32; }
+    .severity-badge.Moderate { background: #E6510020; color: #FFB74D; border: 1px solid #E65100; }
+    .severity-badge.Severe   { background: #B71C1C20; color: #EF9A9A; border: 1px solid #B71C1C; }
+    .severity-badge.None     { background: #37474F20; color: #90CAF9; border: 1px solid #546E7A; }
+
+    .info-box {
+      background: #1565C015; border: 1px solid #1565C0;
+      border-radius: 12px; padding: 16px; font-size: 13px; color: #90CAF9;
+      line-height: 1.6; max-width: 360px; margin-bottom: 24px;
+    }
+    .info-box strong { color: #4FC3F7; }
+
+    .btn {
+      display: block; width: 100%; max-width: 360px; padding: 16px;
+      background: #1565C0; color: #fff; border: none;
+      border-radius: 12px; font-size: 16px; font-weight: 600;
+      text-align: center; text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  {% if no_symptom %}
+    <div class="icon">✓</div>
+    <h2>Great to hear!</h2>
+    <p class="sub">Glad you're not experiencing any side effects from <strong>{{ drug_name }}</strong>. We'll continue monitoring.</p>
+
+  {% else %}
+    <div class="icon">✓</div>
+    <h2>Report submitted.</h2>
+    <p class="sub">Thank you for reporting. This information helps detect adverse drug reactions early.</p>
+
+    <div class="report-card">
+      <div class="label">MEDICINE</div>
+      <div class="value highlight">{{ drug_name }}</div>
+
+      <div class="label">YOUR REPORT</div>
+      <div class="value">{{ symptom }}</div>
+
+      <div class="label">SEVERITY</div>
+      <div class="value">
+        <span class="severity-badge {{ severity }}">{{ severity }}</span>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>What happens next?</strong><br>
+      A pharmacist will review your report and assess whether this is likely a side effect of your medicine.
+      This usually takes 1–2 days. You do not need to do anything else right now.
+    </div>
+  {% endif %}
+
+  <a href="/" class="btn">Back to Dashboard →</a>
+
+</body>
+</html>
