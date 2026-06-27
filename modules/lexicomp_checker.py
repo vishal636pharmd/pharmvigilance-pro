@@ -1,5 +1,6 @@
 # modules/lexicomp_checker.py
 # Uses OpenFDA only — no Lexicomp, no API key needed
+# Includes Indian brand name to FDA generic name mapping
 
 import sqlite3
 import os
@@ -12,6 +13,44 @@ DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 OPENFDA_BASE_URL = "https://api.fda.gov/drug/label.json"
 _fda_label_cache = {}
+
+# ── Indian brand name → FDA generic name mapping ─────────────────────────────
+# OpenFDA uses US/international names. Indian brands are mapped here.
+INDIAN_BRAND_TO_GENERIC = {
+    "limcee":        "ascorbic acid",
+    "crocin":        "acetaminophen",
+    "paracip":       "acetaminophen",
+    "dolo":          "acetaminophen",
+    "calpol":        "acetaminophen",
+    "combiflam":     "ibuprofen",
+    "brufen":        "ibuprofen",
+    "pan":           "pantoprazole",
+    "pantop":        "pantoprazole",
+    "omez":          "omeprazole",
+    "glycomet":      "metformin",
+    "glucophage":    "metformin",
+    "amlip":         "amlodipine",
+    "amlong":        "amlodipine",
+    "norvasc":       "amlodipine",
+    "azithral":      "azithromycin",
+    "zithromax":     "azithromycin",
+    "mox":           "amoxicillin",
+    "amoxil":        "amoxicillin",
+    "allegra":       "fexofenadine",
+    "cetriz":        "cetirizine",
+    "okacet":        "cetirizine",
+    "montair":       "montelukast",
+    "sinarest":      "chlorpheniramine",
+    "avomine":       "promethazine",
+    "vitamin c":     "ascorbic acid",
+    "vit c":         "ascorbic acid",
+    "becosules":     "vitamin b",
+    "storvas":       "atorvastatin",
+    "atorva":        "atorvastatin",
+    "telma":         "telmisartan",
+    "metpure":       "metoprolol",
+    "rantac":        "ranitidine",
+}
 
 
 def init_lexicomp_table():
@@ -46,42 +85,84 @@ def init_lexicomp_table():
 
 
 def _clean_drug_name(drug_name):
-    name = drug_name.lower()
+    """
+    Cleans a pharmacy bill drug name and maps Indian brands
+    to FDA-recognizable generic names.
+
+    Examples:
+        PARACIP 500MG TAB 10S  ->  acetaminophen
+        LIMCEE 500MG TAB 15S   ->  ascorbic acid
+        IBUPROFEN 400MG TAB    ->  ibuprofen
+    """
+    name = drug_name.lower().strip()
+
+    # Remove dosage numbers + units
     name = re.sub(r"\d+\s*(mg|mcg|ml|g|iu)\b", "", name)
-    name = re.sub(r"\b(tab|tablet|cap|capsule|syrup|injection|inj|s)\b", "", name)
+    # Remove tablet/capsule/injection form words
+    name = re.sub(r"\b(tab|tablet|cap|capsule|syrup|inj|injection|s)\b", "", name)
+    # Remove standalone numbers like pack size "15s" -> "15"
     name = re.sub(r"\b\d+\b", "", name)
+    # Remove extra whitespace
     name = re.sub(r"\s+", " ", name).strip()
+
+    # Check against Indian brand name dictionary
+    for brand, generic in INDIAN_BRAND_TO_GENERIC.items():
+        if brand in name:
+            print(f"[OpenFDA] Indian brand mapped: '{brand}' -> '{generic}'")
+            return generic
+
     return name
 
 
 def fetch_fda_label(drug_name):
+    """
+    Fetches FDA drug label. Checks memory cache first,
+    then local DB cache, then calls OpenFDA API live.
+    """
     clean_name = _clean_drug_name(drug_name)
     if not clean_name:
-        return {"found": False, "adverse_reactions_text": "", "warnings_text": "", "source": "invalid_name"}
+        return {
+            "found": False,
+            "adverse_reactions_text": "",
+            "warnings_text": "",
+            "source": "invalid_name"
+        }
 
+    # Check memory cache (fastest)
     if clean_name in _fda_label_cache:
         return _fda_label_cache[clean_name]
 
+    # Check database cache
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT adverse_reactions_text, warnings_text FROM openfda_cache WHERE drug_name=?", (clean_name,))
+    c.execute("""SELECT adverse_reactions_text, warnings_text
+                 FROM openfda_cache WHERE drug_name=?""", (clean_name,))
     row = c.fetchone()
     conn.close()
 
     if row:
-        result = {"found": True, "adverse_reactions_text": row[0] or "", "warnings_text": row[1] or "", "source": "local_cache"}
+        result = {
+            "found": True,
+            "adverse_reactions_text": row[0] or "",
+            "warnings_text": row[1] or "",
+            "source": "local_cache"
+        }
         _fda_label_cache[clean_name] = result
         return result
 
+    # Not cached — call OpenFDA API
     result = _call_openfda_api(clean_name)
 
+    # Save to DB cache for next time
     if result["found"]:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("""INSERT OR REPLACE INTO openfda_cache
                      (drug_name, adverse_reactions_text, warnings_text, fetched_at)
                      VALUES (?, ?, ?, datetime('now'))""",
-                  (clean_name, result["adverse_reactions_text"], result["warnings_text"]))
+                  (clean_name,
+                   result["adverse_reactions_text"],
+                   result["warnings_text"]))
         conn.commit()
         conn.close()
 
@@ -90,9 +171,17 @@ def fetch_fda_label(drug_name):
 
 
 def _call_openfda_api(clean_name):
-    """Calls OpenFDA. Handles all error cases gracefully so the app never crashes."""
+    """
+    Calls the real OpenFDA API. No API key needed.
+    Tries generic_name, brand_name, substance_name in order.
+    """
     if not clean_name or len(clean_name) < 2:
-        return {"found": False, "adverse_reactions_text": "", "warnings_text": "", "source": "name_too_short"}
+        return {
+            "found": False,
+            "adverse_reactions_text": "",
+            "warnings_text": "",
+            "source": "name_too_short"
+        }
 
     search_attempts = [
         f'openfda.generic_name:"{clean_name}"',
@@ -113,85 +202,129 @@ def _call_openfda_api(clean_name):
                 results = data.get("results", [])
                 if results:
                     label = results[0]
-                    adverse_reactions = " ".join(label.get("adverse_reactions", []))
-                    warnings = " ".join(label.get("warnings", []) + label.get("warnings_and_cautions", []))
+                    adverse_reactions = " ".join(
+                        label.get("adverse_reactions", [])
+                    )
+                    warnings = " ".join(
+                        label.get("warnings", []) +
+                        label.get("warnings_and_cautions", [])
+                    )
                     print(f"[OpenFDA] FOUND label for '{clean_name}'")
-                    return {"found": True, "adverse_reactions_text": adverse_reactions,
-                            "warnings_text": warnings, "source": "OpenFDA API"}
+                    return {
+                        "found": True,
+                        "adverse_reactions_text": adverse_reactions,
+                        "warnings_text": warnings,
+                        "source": "OpenFDA API"
+                    }
             elif response.status_code == 404:
-                # Normal — this search variant just had no match, try next
-                pass
+                pass  # No match for this variant, try next
             else:
-                print(f"[OpenFDA] Unexpected status {response.status_code} for '{clean_name}'")
+                print(f"[OpenFDA] Status {response.status_code} for '{clean_name}'")
 
             time.sleep(0.3)
 
         except requests.exceptions.Timeout:
-            print(f"[OpenFDA] Timeout for '{clean_name}' — check your internet connection")
+            print(f"[OpenFDA] Timeout for '{clean_name}'")
             continue
         except requests.exceptions.ConnectionError:
-            print(f"[OpenFDA] No internet connection available")
-            return {"found": False, "adverse_reactions_text": "", "warnings_text": "", "source": "no_internet"}
+            print(f"[OpenFDA] No internet connection")
+            return {
+                "found": False,
+                "adverse_reactions_text": "",
+                "warnings_text": "",
+                "source": "no_internet"
+            }
         except Exception as e:
             print(f"[OpenFDA] Error: {e}")
             continue
 
     print(f"[OpenFDA] No FDA label found for '{clean_name}'")
-    return {"found": False, "adverse_reactions_text": "", "warnings_text": "", "source": "not_found_in_openfda"}
+    return {
+        "found": False,
+        "adverse_reactions_text": "",
+        "warnings_text": "",
+        "source": "not_found_in_openfda"
+    }
 
 
 def _meddra_pt_to_search_terms(meddra_pt):
+    """
+    Maps MedDRA Preferred Terms to plain English words
+    that appear in FDA label text.
+    FDA labels use everyday English, not MedDRA terminology.
+    """
     SEARCH_TERM_MAP = {
         "peripheral oedema": ["edema", "oedema", "swelling", "swollen"],
-        "diarrhoea": ["diarrhea", "diarrhoea", "loose stool"],
-        "abdominal pain": ["abdominal pain", "stomach pain", "stomach upset"],
-        "rash": ["rash", "skin eruption"],
-        "pruritus": ["itching", "pruritus", "itch"],
-        "headache": ["headache"],
-        "dizziness": ["dizziness", "dizzy", "vertigo"],
-        "nausea": ["nausea", "nauseous"],
-        "vomiting": ["vomiting", "vomit", "emesis"],
-        "pyrexia": ["fever", "pyrexia"],
-        "tachycardia": ["tachycardia", "rapid heart", "palpitation"],
-        "palpitations": ["palpitation", "heart racing"],
-        "dyspnoea": ["dyspnea", "shortness of breath", "breathing difficulty"],
-        "cough": ["cough"],
-        "myalgia": ["myalgia", "muscle pain", "muscle ache"],
-        "arthralgia": ["arthralgia", "joint pain"],
-        "fatigue": ["fatigue", "tiredness", "weakness", "asthenia"],
-        "insomnia": ["insomnia", "sleep disturbance"],
-        "somnolence": ["somnolence", "drowsiness", "sedation"],
-        "dry mouth": ["dry mouth", "xerostomia"],
-        "tongue oedema": ["tongue swelling", "tongue edema"],
-        "lip oedema": ["lip swelling", "lip edema"],
+        "diarrhoea":         ["diarrhea", "diarrhoea", "loose stool"],
+        "abdominal pain":    ["abdominal pain", "stomach pain", "stomach upset"],
+        "rash":              ["rash", "skin eruption"],
+        "pruritus":          ["itching", "pruritus", "itch"],
+        "headache":          ["headache"],
+        "dizziness":         ["dizziness", "dizzy", "vertigo"],
+        "nausea":            ["nausea", "nauseous"],
+        "vomiting":          ["vomiting", "vomit", "emesis"],
+        "pyrexia":           ["fever", "pyrexia"],
+        "tachycardia":       ["tachycardia", "rapid heart", "palpitation"],
+        "palpitations":      ["palpitation", "heart racing"],
+        "dyspnoea":          ["dyspnea", "shortness of breath",
+                              "breathing difficulty"],
+        "cough":             ["cough"],
+        "myalgia":           ["myalgia", "muscle pain", "muscle ache"],
+        "arthralgia":        ["arthralgia", "joint pain"],
+        "fatigue":           ["fatigue", "tiredness", "weakness", "asthenia"],
+        "insomnia":          ["insomnia", "sleep disturbance"],
+        "somnolence":        ["somnolence", "drowsiness", "sedation"],
+        "dry mouth":         ["dry mouth", "xerostomia"],
+        "tongue oedema":     ["tongue swelling", "tongue edema"],
+        "lip oedema":        ["lip swelling", "lip edema"],
     }
     pt_lower = meddra_pt.lower().strip()
     return SEARCH_TERM_MAP.get(pt_lower, [pt_lower])
 
 
 def check_adr_in_lexicomp(drug_name, meddra_pt):
-    """Main check function — uses OpenFDA exclusively."""
+    """
+    MAIN FUNCTION called by auto_icsr_pipeline.py
+
+    Checks if a reported ADR is documented in the FDA label for that drug.
+    Uses OpenFDA API exclusively — no Lexicomp license needed.
+
+    Returns:
+        found=True, action="no_icsr_needed"   -> known ADR, no report needed
+        found=False, action="auto_submit_icsr" -> unknown ADR, generate ICSR
+    """
     label_data = fetch_fda_label(drug_name)
 
     if not label_data["found"]:
         reason_detail = {
-            "no_internet": "No internet connection — cannot reach OpenFDA.",
-            "not_found_in_openfda": f"No FDA label found for '{drug_name}' in OpenFDA database.",
-            "invalid_name": f"Could not parse drug name '{drug_name}'.",
-            "name_too_short": f"Drug name '{drug_name}' too short to search."
-        }.get(label_data["source"], f"FDA label unavailable for '{drug_name}'.")
+            "no_internet":         "No internet connection — cannot reach OpenFDA.",
+            "not_found_in_openfda": f"No FDA label found for '{drug_name}'.",
+            "invalid_name":        f"Could not parse drug name '{drug_name}'.",
+            "name_too_short":      f"Drug name '{drug_name}' too short to search."
+        }.get(label_data["source"],
+              f"FDA label unavailable for '{drug_name}'.")
 
         return {
-            "found": False,
+            "found":  False,
             "action": "auto_submit_icsr",
-            "reason": f"{reason_detail} ICSR auto-generated as a precaution since safety cannot be confirmed.",
-            "lexicomp_data": {"found": False, "drug_name": drug_name, "meddra_pt": meddra_pt,
-                              "frequency": "Unknown", "source": label_data["source"]}
+            "reason": (f"{reason_detail} ICSR auto-generated as a precaution "
+                       f"since safety cannot be confirmed."),
+            "lexicomp_data": {
+                "found":     False,
+                "drug_name": drug_name,
+                "meddra_pt": meddra_pt,
+                "frequency": "Unknown",
+                "source":    label_data["source"]
+            }
         }
 
-    full_text = (label_data["adverse_reactions_text"] + " " + label_data["warnings_text"]).lower()
-    search_terms = _meddra_pt_to_search_terms(meddra_pt)
-    matched_term = None
+    full_text = (
+        label_data["adverse_reactions_text"] + " " +
+        label_data["warnings_text"]
+    ).lower()
+
+    search_terms  = _meddra_pt_to_search_terms(meddra_pt)
+    matched_term  = None
 
     for term in search_terms:
         if term in full_text:
@@ -200,33 +333,54 @@ def check_adr_in_lexicomp(drug_name, meddra_pt):
 
     if matched_term:
         return {
-            "found": True,
+            "found":  True,
             "action": "no_icsr_needed",
-            "reason": f"'{meddra_pt}' (matched as '{matched_term}') IS documented in the FDA label for '{drug_name}'. No new ICSR needed.",
-            "lexicomp_data": {"found": True, "drug_name": drug_name, "meddra_pt": meddra_pt,
-                              "frequency": "Documented", "source": label_data["source"], "matched_term": matched_term}
+            "reason": (f"'{meddra_pt}' (matched as '{matched_term}') IS "
+                       f"documented in the FDA label for '{drug_name}'. "
+                       f"No new ICSR needed."),
+            "lexicomp_data": {
+                "found":        True,
+                "drug_name":    drug_name,
+                "meddra_pt":    meddra_pt,
+                "frequency":    "Documented",
+                "source":       label_data["source"],
+                "matched_term": matched_term
+            }
         }
     else:
         return {
-            "found": False,
+            "found":  False,
             "action": "auto_submit_icsr",
-            "reason": f"'{meddra_pt}' is NOT mentioned in the FDA label for '{drug_name}'. ICSR auto-generated for PvPI submission.",
-            "lexicomp_data": {"found": False, "drug_name": drug_name, "meddra_pt": meddra_pt,
-                              "frequency": "Not documented", "source": label_data["source"]}
+            "reason": (f"'{meddra_pt}' is NOT mentioned in the FDA label "
+                       f"for '{drug_name}'. ICSR auto-generated for PvPI."),
+            "lexicomp_data": {
+                "found":     False,
+                "drug_name": drug_name,
+                "meddra_pt": meddra_pt,
+                "frequency": "Not documented",
+                "source":    label_data["source"]
+            }
         }
 
 
 def add_to_lexicomp_reference(drug_name, meddra_pt, frequency="Unknown"):
+    """
+    Manually adds a drug-ADR pair to the local OpenFDA cache.
+    Use this when you want to override the FDA check for a specific drug.
+    """
     clean_name = _clean_drug_name(drug_name)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT adverse_reactions_text FROM openfda_cache WHERE drug_name=?", (clean_name,))
+    c.execute("""SELECT adverse_reactions_text
+                 FROM openfda_cache WHERE drug_name=?""", (clean_name,))
     row = c.fetchone()
     existing_text = row[0] if row else ""
-    updated_text = f"{existing_text} {meddra_pt}".strip()
+    updated_text  = f"{existing_text} {meddra_pt}".strip()
     c.execute("""INSERT OR REPLACE INTO openfda_cache
-                 (drug_name, adverse_reactions_text, warnings_text, fetched_at)
-                 VALUES (?, ?, '', datetime('now'))""", (clean_name, updated_text))
+                 (drug_name, adverse_reactions_text,
+                  warnings_text, fetched_at)
+                 VALUES (?, ?, '', datetime('now'))""",
+              (clean_name, updated_text))
     conn.commit()
     conn.close()
     _fda_label_cache.pop(clean_name, None)

@@ -2,7 +2,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify
 import sqlite3, re, sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import json
 from modules.bill_fetcher       import fetch_bill_html
 from modules.bill_parser        import auto_detect_and_parse
 from modules.patient_db         import (init_db, create_or_get_profile, get_profile_by_id,
@@ -434,6 +434,60 @@ def run_all_checks():
         "icsr_generated":  sum(1 for r in results if r["final_action"] == "icsr_generated"),
         "no_icsr_needed":  sum(1 for r in results if r["final_action"] == "no_icsr_needed"),
         "results":         results
+    })
+# ── WEB PUSH NOTIFICATION ROUTES ─────────────────────────────────────────────
+
+from modules.push_notifications import (init_push_table, save_subscription,
+                                         send_reminder_push, VAPID_PUBLIC_KEY)
+
+init_push_table()
+
+
+@app.route("/push/vapid-public-key")
+def vapid_public_key():
+    """Returns the VAPID public key for the browser to use when subscribing."""
+    return jsonify({"publicKey": VAPID_PUBLIC_KEY})
+
+
+@app.route("/push/subscribe", methods=["POST"])
+def push_subscribe():
+    """
+    Called by the browser when the patient clicks 'Allow' on the
+    notification permission popup. Saves their device's push subscription.
+    """
+    if "patient_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json()
+    subscription_json = json.dumps(data.get("subscription", {}))
+    device_name = request.headers.get("User-Agent", "Unknown")[:50]
+
+    save_subscription(session["patient_id"], subscription_json, device_name)
+    return jsonify({"status": "subscribed"})
+
+
+@app.route("/push/test")
+def push_test():
+    """
+    Sends a test WhatsApp-style push notification to the logged-in patient.
+    Use this to demo the notification feature.
+    """
+    if "patient_id" not in session:
+        return jsonify({"error": "Not logged in"})
+
+    from modules.push_notifications import send_push_to_patient
+    profile = get_profile_by_id(session["patient_id"])
+
+    sent = send_push_to_patient(
+        patient_id=session["patient_id"],
+        title="PVPro — Test Notification",
+        body=f"Hi {profile.get('full_name','')}, this is a real push notification from PVPro!",
+        url="/"
+    )
+    return jsonify({
+        "sent": sent,
+        "message": "Check your phone — notification should appear even if browser is closed!" if sent
+                   else "Not sent — make sure you subscribed to notifications first (visit dashboard)"
     })
 if __name__ == "__main__":
     print("=" * 50)

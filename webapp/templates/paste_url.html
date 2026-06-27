@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PVPro — Enter Bill Link</title>
+  <title>PVPro — Process Your Bill</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -11,41 +11,106 @@
       background: #0D1B2A; color: #E8F4FD;
       min-height: 100vh; padding: 28px 20px;
     }
-    .back { color: #4FC3F7; font-size: 13px; text-decoration: none; display: block; margin-bottom: 24px; }
-    h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-    .sub { color: #90CAF9; font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
-    label { display: block; font-size: 13px; color: #B0BEC5; margin-bottom: 6px; }
+    .back { color: #4FC3F7; font-size: 13px; text-decoration: none;
+            display: block; margin-bottom: 24px; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: #90CAF9; font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
+
+    .step-card {
+      background: #1A2A3A; border-radius: 12px; padding: 16px;
+      margin-bottom: 14px; display: flex; gap: 14px; align-items: flex-start;
+    }
+    .step-num {
+      min-width: 32px; height: 32px; background: #1565C0; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .step-text { font-size: 14px; color: #B0BEC5; line-height: 1.6; }
+    .step-text strong { color: #E8F4FD; display: block; margin-bottom: 2px; }
+    .step-text code {
+      background: #0D1B2A; padding: 2px 8px; border-radius: 4px;
+      font-size: 12px; color: #4FC3F7;
+    }
+
+    .divider { border: none; border-top: 1px solid #1A2A3A; margin: 24px 0; }
+
+    label { display: block; font-size: 13px; color: #B0BEC5; margin-bottom: 8px; }
     textarea {
       width: 100%; background: #1A2A3A; border: 1px solid #1E3A5F;
       border-radius: 10px; padding: 14px; color: #E8F4FD;
-      font-size: 14px; margin-bottom: 20px; height: 90px; resize: none;
+      font-size: 13px; height: 80px; resize: none; outline: none;
     }
+    textarea:focus { border-color: #1565C0; }
+
     .error {
       background: #B71C1C22; border: 1px solid #EF5350; color: #EF9A9A;
-      padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 20px;
+      padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
     }
     button {
       width: 100%; padding: 16px; background: #1565C0; color: #fff;
       border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
+      margin-top: 12px; cursor: pointer;
     }
+
+    .tip {
+      background: #1565C015; border: 1px solid #1565C040;
+      border-radius: 10px; padding: 14px; font-size: 12px;
+      color: #90CAF9; margin-top: 16px; line-height: 1.6;
+    }
+    .tip strong { color: #4FC3F7; }
   </style>
 </head>
 <body>
   <a href="/" class="back">← Back</a>
-  <h2>Enter your invoice link</h2>
-  <p class="sub">
-    After entering the OTP on Apollo's page, copy the final invoice page link
-    (starts with invoice.apollopharmacy.in) and paste it below.
-  </p>
+  <h2>Process Your Apollo Bill</h2>
+  <p class="sub">Follow these 3 steps to extract your medicine details automatically.</p>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-text">
+      <strong>Open the Apollo SMS link</strong>
+      Tap the bill link Apollo sent you via SMS.
+      It starts with <code>apmails.in</code> or <code>invoice.apollopharmacy.in</code>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-text">
+      <strong>Enter the OTP</strong>
+      Apollo will send an OTP to your registered mobile.
+      Enter it on Apollo's page — this confirms your identity.
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <div class="step-text">
+      <strong>Copy the final URL and paste below</strong>
+      After OTP, your browser shows the invoice page.
+      The URL will look like:<br>
+      <code>https://invoice.apollopharmacy.in/afterotpvalidation.php?K/...</code><br><br>
+      Copy that full URL from your browser address bar → paste it below.
+    </div>
+  </div>
+
+  <hr class="divider">
 
   {% if error %}
   <div class="error">⚠ {{ error }}</div>
   {% endif %}
 
+  <label>PASTE YOUR INVOICE URL HERE</label>
   <form method="POST">
-    <label>INVOICE URL</label>
-    <textarea name="invoice_url" placeholder="https://invoice.apollopharmacy.in/..."></textarea>
-    <button type="submit">Process Bill →</button>
+    <textarea name="invoice_url"
+              placeholder="https://invoice.apollopharmacy.in/afterotpvalidation.php?K/..."></textarea>
+    <button type="submit">Extract Medicine Details →</button>
   </form>
+
+  <div class="tip">
+    <strong>Tip:</strong> On your phone, tap the address bar on Apollo's invoice page,
+    select all the text (long press → Select All), then copy and paste it here.
+    The URL must start with <code>invoice.apollopharmacy.in</code>
+  </div>
 </body>
 </html>

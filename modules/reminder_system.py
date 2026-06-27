@@ -13,7 +13,7 @@
 #   2. CALLED FROM FLASK (/reminders route in app.py):
 #        Lets you check reminders on-demand from the browser — useful for
 #        your demo since you don't need a second terminal running.
-
+import schedule
 import sqlite3
 import smtplib
 import time
