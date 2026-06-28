@@ -88,7 +88,99 @@ def paste_url():
                                bill_name_on_invoice=extracted.get("patient_name","N/A"),
                                bill_date=extracted.get("bill_date","N/A"))
     return render_template("paste_url.html", error=None)
+@app.route("/process-fetched-bill", methods=["POST"])
+def process_fetched_bill():
+    """
+    Receives bill HTML fetched by the browser (client-side).
+    Browser fetches Apollo page using its own OTP session cookies,
+    then sends the HTML here for extraction.
+    """
+    if "patient_id" not in session:
+        return redirect(url_for("index"))
 
+    bill_html = request.form.get("bill_html", "").strip()
+    bill_url  = request.form.get("bill_url", "").strip()
+
+    if not bill_html:
+        return render_template("paste_url.html",
+                               error="No bill content received. Please try again.")
+
+    # Parse the bill HTML
+    extracted = auto_detect_and_parse(bill_html, bill_url or
+                                      "https://invoice.apollopharmacy.in/")
+
+    pid     = session["patient_id"]
+    profile = get_profile_by_id(pid)
+    save_purchase(pid, extracted)
+
+    return render_template("saved.html",
+                           error=None,
+                           drugs=extracted.get("drugs", []),
+                           patient=profile,
+                           bill_name_on_invoice=extracted.get("patient_name", "N/A"),
+                           bill_date=extracted.get("bill_date", "N/A"))
+
+
+@app.route("/paste-bill-text", methods=["GET", "POST"])
+def paste_bill_text():
+    """
+    Fallback: patient pastes copied text from Apollo invoice.
+    Always works regardless of Apollo's blocking.
+    """
+    if "patient_id" not in session:
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+        bill_text = request.form.get("bill_text", "").strip()
+        if not bill_text:
+            return render_template("paste_bill_text.html",
+                                   error="Please paste your bill text.")
+
+        import re as _re
+        html = f"<html><body><pre>{bill_text}</pre></body></html>"
+        extracted = auto_detect_and_parse(
+            html, "https://invoice.apollopharmacy.in/text"
+        )
+
+        if not extracted.get("drugs"):
+            drugs = []
+            for line in bill_text.split("\n"):
+                if _re.search(r"\d+\s*(MG|MCG|ML|G|TAB|CAP)", line, _re.I):
+                    if any(w in line.upper() for w in
+                           ["PRODUCT", "MEDICINE", "DESCRIPTION", "ITEM"]):
+                        continue
+                    parts = line.strip().split()
+                    if parts:
+                        if parts[0].isdigit():
+                            drug_name = " ".join(parts[1:])
+                            qty = parts[0]
+                        else:
+                            drug_name = line.strip()
+                            qty = "N/A"
+                        drug_name = _re.sub(r"[\d\.]+\s*$", "",
+                                            drug_name).strip()
+                        if len(drug_name) > 3:
+                            drugs.append({
+                                "drug_name": drug_name,
+                                "quantity":  qty,
+                                "price":     "N/A"
+                            })
+            if drugs:
+                extracted["drugs"] = drugs
+
+        pid     = session["patient_id"]
+        profile = get_profile_by_id(pid)
+        save_purchase(pid, extracted)
+
+        return render_template("saved.html",
+                               error=None,
+                               drugs=extracted.get("drugs", []),
+                               patient=profile,
+                               bill_name_on_invoice=extracted.get(
+                                   "patient_name", "N/A"),
+                               bill_date=extracted.get("bill_date", "N/A"))
+
+    return render_template("paste_bill_text.html", error=None)
 # ── MODULE 1: TEST ────────────────────────────────────────────────────────────
 @app.route("/test")
 def test_pipeline():

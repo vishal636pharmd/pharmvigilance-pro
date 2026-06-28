@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Paste Bill Text</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif;
+           background: #0D1B2A; color: #E8F4FD;
+           min-height: 100vh; padding: 28px 20px; }
+    .back { color: #4FC3F7; font-size: 13px;
+            text-decoration: none; display: block; margin-bottom: 24px; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: #90CAF9; font-size: 14px;
+           margin-bottom: 24px; line-height: 1.6; }
+    .step-card {
+      background: #1A2A3A; border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 10px;
+      display: flex; gap: 12px;
+    }
+    .step-num {
+      min-width: 28px; height: 28px; background: #1565C0;
+      border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 13px;
+      font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .step-text { font-size: 13px; color: #B0BEC5;
+                 line-height: 1.6; padding-top: 3px; }
+    .step-text strong { color: #E8F4FD; }
+    label { display: block; font-size: 12px; letter-spacing: 1px;
+            color: #546E7A; margin-top: 20px; margin-bottom: 8px; }
+    textarea {
+      width: 100%; background: #1A2A3A;
+      border: 1px solid #1E3A5F; border-radius: 10px;
+      padding: 14px; color: #E8F4FD; font-size: 13px;
+      height: 160px; resize: none; outline: none;
+    }
+    textarea:focus { border-color: #1565C0; }
+    .error {
+      background: #B71C1C22; border: 1px solid #EF5350;
+      color: #EF9A9A; padding: 12px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 16px;
+    }
+    button {
+      width: 100%; padding: 16px; background: #1565C0;
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 600;
+      margin-top: 14px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <a href="/paste-url" class="back">← Back to URL method</a>
+  <h2>Paste Bill Text</h2>
+  <p class="sub">Copy all text from your Apollo invoice page and paste below.</p>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-text">
+      Open your Apollo bill link → enter OTP → invoice page opens
+    </div>
+  </div>
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-text">
+      <strong>On phone:</strong> long press on page → Select All → Copy<br>
+      <strong>On PC:</strong> press Ctrl+A then Ctrl+C
+    </div>
+  </div>
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <div class="step-text">Paste below and tap Extract Details</div>
+  </div>
+
+  {% if error %}
+  <div class="error">⚠ {{ error }}</div>
+  {% endif %}
+
+  <form method="POST">
+    <label>PASTE YOUR BILL TEXT HERE</label>
+    <textarea name="bill_text"
+      placeholder="Name: VISHAL   Mobile: 9445571426
+Bill No: 16280SI00001432   Bill Date: 2026-06-26 20:20:00
+10   PARACIP 500MG TAB 10S   0.96"></textarea>
+    <button type="submit">Extract Medicine Details →</button>
+  </form>
+</body>
+</html>
