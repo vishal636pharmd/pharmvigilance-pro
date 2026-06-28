@@ -6,5 +6,5 @@ reportlab
 gunicorn
 pywebpush
 cryptography
-playwright
-watchdog
+Pillow
+pytesseract

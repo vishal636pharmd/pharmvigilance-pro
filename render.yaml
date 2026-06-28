@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: pharmvigilance-pro
+    env: python
+    buildCommand: apt-get install -y tesseract-ocr && pip install -r requirements.txt
+    startCommand: gunicorn webapp.app:app
+    plan: free

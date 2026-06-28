@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Scan Your Bill</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0D1B2A; color: #E8F4FD;
+      min-height: 100vh; padding: 28px 20px;
+    }
+    .back {
+      color: #4FC3F7; font-size: 13px;
+      text-decoration: none; display: block; margin-bottom: 24px;
+    }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .sub {
+      color: #90CAF9; font-size: 14px;
+      margin-bottom: 28px; line-height: 1.6;
+    }
+
+    /* Camera area */
+    .camera-area {
+      background: #1A2A3A; border-radius: 16px;
+      padding: 28px 20px; text-align: center;
+      margin-bottom: 20px; position: relative;
+    }
+    .camera-icon { font-size: 48px; margin-bottom: 12px; }
+    .camera-title {
+      font-size: 16px; font-weight: 600; margin-bottom: 6px;
+    }
+    .camera-sub {
+      font-size: 13px; color: #90CAF9; margin-bottom: 20px;
+    }
+
+    /* Hidden file input */
+    #cameraInput { display: none; }
+
+    .btn-camera {
+      display: inline-block; padding: 14px 32px;
+      background: #1565C0; color: #fff; border: none;
+      border-radius: 12px; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin: 6px;
+    }
+    .btn-gallery {
+      display: inline-block; padding: 14px 32px;
+      background: #1A2A3A; color: #90CAF9;
+      border: 1px solid #1E3A5F;
+      border-radius: 12px; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin: 6px;
+    }
+
+    /* Preview */
+    #previewContainer {
+      display: none; margin-top: 16px;
+    }
+    #preview {
+      width: 100%; max-height: 300px; object-fit: contain;
+      border-radius: 12px; border: 2px solid #1565C0;
+    }
+    .preview-label {
+      font-size: 12px; color: #546E7A;
+      margin-top: 8px; margin-bottom: 12px;
+    }
+
+    /* Status */
+    .status-box {
+      background: #1A2A3A; border-radius: 10px;
+      padding: 14px; margin-top: 16px;
+      font-size: 13px; line-height: 1.6;
+      display: none;
+    }
+    .status-box.show    { display: block; }
+    .status-box.loading { border-left: 3px solid #1565C0; color: #90CAF9; }
+    .status-box.success { border-left: 3px solid #2E7D32; color: #81C784; }
+    .status-box.error   { border-left: 3px solid #EF5350; color: #EF9A9A; }
+
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #546E7A; border-top-color: #4FC3F7;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin-right: 8px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Tips */
+    .tips {
+      background: #1565C015; border: 1px solid #1565C040;
+      border-radius: 12px; padding: 16px; margin-top: 20px;
+    }
+    .tips-title {
+      font-size: 13px; font-weight: 600;
+      color: #4FC3F7; margin-bottom: 10px;
+    }
+    .tip-item {
+      font-size: 12px; color: #90CAF9;
+      margin-bottom: 6px; padding-left: 16px;
+      position: relative; line-height: 1.5;
+    }
+    .tip-item::before {
+      content: "✓"; position: absolute;
+      left: 0; color: #2E7D32;
+    }
+
+    /* Submit */
+    #submitSection { display: none; margin-top: 16px; }
+    .btn-submit {
+      width: 100%; padding: 16px; background: #2E7D32;
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+    }
+    .btn-retake {
+      width: 100%; padding: 12px; background: transparent;
+      color: #90CAF9; border: 1px solid #1E3A5F;
+      border-radius: 12px; font-size: 14px;
+      cursor: pointer; margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <a href="/" class="back">← Back</a>
+  <h2>Scan Your Bill</h2>
+  <p class="sub">
+    Take a photo of any pharmacy bill — Apollo, MedPlus,
+    or any local pharmacy. PVPro reads the medicines automatically.
+  </p>
+
+  <!-- Camera capture area -->
+  <div class="camera-area">
+    <div class="camera-icon">📷</div>
+    <div class="camera-title">Photograph your pharmacy receipt</div>
+    <div class="camera-sub">
+      Works for any printed bill from any pharmacy in India
+    </div>
+
+    <!-- Camera button (opens camera directly on phone) -->
+    <button class="btn-camera" onclick="openCamera()">
+      📷 Open Camera
+    </button>
+
+    <!-- Gallery button (pick existing photo) -->
+    <button class="btn-gallery" onclick="openGallery()">
+      🖼 Choose Photo
+    </button>
+
+    <!-- Hidden inputs -->
+    <input type="file" id="cameraInput"
+           accept="image/*" capture="environment"
+           onchange="handleImage(this)">
+    <input type="file" id="galleryInput"
+           accept="image/*"
+           onchange="handleImage(this)">
+  </div>
+
+  <!-- Image preview -->
+  <div id="previewContainer">
+    <img id="preview" src="" alt="Bill preview">
+    <div class="preview-label">
+      Make sure all medicine names are clearly visible
+    </div>
+
+    <div id="submitSection">
+      <button class="btn-submit" onclick="submitForOCR()">
+        Extract Medicine Details →
+      </button>
+      <button class="btn-retake" onclick="retake()">
+        Retake Photo
+      </button>
+    </div>
+  </div>
+
+  <!-- Status messages -->
+  <div class="status-box" id="statusBox"></div>
+
+  <!-- Hidden form -->
+  <form id="ocrForm" method="POST" action="/scan-bill/process">
+    <input type="hidden" name="image_data" id="imageData">
+  </form>
+
+  <!-- Tips -->
+  <div class="tips">
+    <div class="tips-title">Tips for best results</div>
+    <div class="tip-item">Lay the bill flat on a table</div>
+    <div class="tip-item">Ensure good lighting — avoid shadows</div>
+    <div class="tip-item">Hold camera steady, photo must be in focus</div>
+    <div class="tip-item">Capture the full bill including medicine table</div>
+    <div class="tip-item">Works best in landscape orientation for wide bills</div>
+  </div>
+
+  <script>
+    let capturedImage = null;
+
+    function openCamera() {
+      document.getElementById("cameraInput").click();
+    }
+
+    function openGallery() {
+      document.getElementById("galleryInput").click();
+    }
+
+    function handleImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        capturedImage = e.target.result;
+
+        // Show preview
+        document.getElementById("preview").src = capturedImage;
+        document.getElementById("previewContainer").style.display = "block";
+        document.getElementById("submitSection").style.display = "block";
+
+        // Hide previous status
+        document.getElementById("statusBox").className = "status-box";
+
+        // Scroll to preview
+        document.getElementById("previewContainer")
+                .scrollIntoView({behavior: "smooth"});
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function submitForOCR() {
+      if (!capturedImage) {
+        showStatus("Please capture or select a photo first.", "error");
+        return;
+      }
+
+      showStatus(
+        '<span class="spinner"></span>'
+        + 'Reading your bill... this takes 10-20 seconds.',
+        "loading"
+      );
+
+      document.getElementById("submitSection").style.display = "none";
+      document.getElementById("imageData").value = capturedImage;
+      document.getElementById("ocrForm").submit();
+    }
+
+    function retake() {
+      capturedImage = null;
+      document.getElementById("previewContainer").style.display = "none";
+      document.getElementById("statusBox").className = "status-box";
+      document.getElementById("cameraInput").value = "";
+      document.getElementById("galleryInput").value = "";
+    }
+
+    function showStatus(message, type) {
+      const box = document.getElementById("statusBox");
+      box.innerHTML = message;
+      box.className = "status-box show " + type;
+    }
+  </script>
+</body>
+</html>
