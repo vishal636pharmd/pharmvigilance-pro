@@ -1,77 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-  <script>
-const VAPID_PUBLIC_KEY_URL = "/push/vapid-public-key";
-const SUBSCRIBE_URL        = "/push/subscribe";
-
-function urlBase64ToUint8Array(base64String) {
-  const padding  = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64   = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData  = window.atob(base64);
-  const output   = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    output[i] = rawData.charCodeAt(i);
-  }
-  return output;
-}
-
-async function setupPushNotifications() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    console.log("Push not supported on this browser");
-    return;
-  }
-
-  try {
-    // Register service worker
-    const reg = await navigator.serviceWorker.register("/static/sw.js");
-    console.log("[PVPro] Service Worker registered");
-
-    // Request notification permission
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      console.log("[PVPro] Notification permission denied");
-      return;
-    }
-
-    // Get VAPID public key from server
-    const keyResp = await fetch(VAPID_PUBLIC_KEY_URL);
-    const keyData = await keyResp.json();
-    const publicKey = keyData.publicKey;
-
-    if (!publicKey || publicKey === "PASTE_YOUR_PUBLIC_KEY_HERE") {
-      console.log("[PVPro] VAPID key not configured yet");
-      return;
-    }
-
-    // Subscribe to push notifications
-    const subscription = await reg.pushManager.subscribe({
-      userVisibleOnly:      true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey)
-    });
-
-    // Send subscription to server to save
-    await fetch(SUBSCRIBE_URL, {
-      method:  "POST",
-      headers: {"Content-Type": "application/json"},
-      body:    JSON.stringify({subscription: subscription.toJSON()})
-    });
-
-    console.log("[PVPro] Push subscription saved — real notifications active!");
-
-  } catch(err) {
-    console.log("[PVPro] Push setup error:", err);
-  }
-}
-
-// Run when page loads
-window.addEventListener("load", setupPushNotifications);
-</script>
 <head>
-  <link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#1565C0">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PVPro — Dashboard</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#1565C0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0D1B2A; color: #E8F4FD; min-height: 100vh; padding: 28px 20px; }
@@ -127,7 +61,7 @@ window.addEventListener("load", setupPushNotifications);
     </div>
     {% endfor %}
   {% else %}
-    <div class="empty">No purchases yet. Run test capture below.</div>
+    <div class="empty">No purchases yet.</div>
   {% endif %}
 
   <div class="section-label">FOLLOW-UP REMINDERS</div>
@@ -171,33 +105,88 @@ window.addEventListener("load", setupPushNotifications);
     </div>
     {% endfor %}
   {% else %}
-    <div class="empty">No symptom reports yet.<br>Fill the symptom form after triggering a reminder.</div>
+    <div class="empty">No symptom reports yet.</div>
   {% endif %}
 
   <div class="section-label" style="margin-top: 32px;">QUICK ACTIONS</div>
 
-<a href="/symptom?patient_id={{ profile.patient_id }}" class="btn btn-purple">
-  Report a Symptom →
-</a>
+  <a href="/symptom?patient_id={{ profile.patient_id }}" class="btn btn-purple">
+    Report a Symptom →
+  </a>
 
-<a href="/notifications" class="btn">
-  View Notifications →
-</a>
+  <a href="/scan-bill" class="btn btn-secondary">
+    📷 Scan Bill (Camera) →
+  </a>
 
-<a href="/scan-bill" class="btn btn-secondary">
-  📷 Scan Bill (Camera) →
-</a>
+  <a href="/paste-bill-text" class="btn btn-secondary">
+    📋 Add Bill by Text →
+  </a>
 
-<div class="section-label" style="margin-top: 24px;">CLINICAL TOOLS</div>
+  <div class="section-label" style="margin-top: 24px;">CLINICAL TOOLS</div>
 
-<a href="/naranjo" class="btn btn-secondary">
-  Causality Assessment Tool →
-</a>
+  <a href="/naranjo" class="btn btn-secondary">
+    Causality Assessment (Naranjo) →
+  </a>
 
-<a href="/icsr-queue" class="btn btn-green">
-  Safety Reports Dashboard →
-</a>
-<a href="/notifications" class="btn btn-secondary">📱 View Notifications →</a>
+  <a href="/icsr-queue" class="btn btn-green">
+    Safety Reports Dashboard →
+  </a>
+
+  <a href="/notifications" class="btn btn-secondary">
+    🔔 View Notifications →
+  </a>
+
   <div class="logout"><a href="/logout">Switch profile / Logout</a></div>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/static/sw.js");
+    }
+  </script>
+
+  <script>
+  const VAPID_PUBLIC_KEY_URL = "/push/vapid-public-key";
+  const SUBSCRIBE_URL        = "/push/subscribe";
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const output  = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      output[i] = rawData.charCodeAt(i);
+    }
+    return output;
+  }
+
+  async function setupPushNotifications() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    try {
+      const reg = await navigator.serviceWorker.register("/static/sw.js");
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") return;
+
+      const keyResp  = await fetch(VAPID_PUBLIC_KEY_URL);
+      const keyData  = await keyResp.json();
+      const publicKey = keyData.publicKey;
+      if (!publicKey || publicKey === "PASTE_YOUR_PUBLIC_KEY_HERE") return;
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+
+      await fetch(SUBSCRIBE_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({subscription: subscription.toJSON()})
+      });
+    } catch(err) {
+      console.log("[PVPro] Push setup error:", err);
+    }
+  }
+
+  window.addEventListener("load", setupPushNotifications);
+  </script>
 </body>
 </html>

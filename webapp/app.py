@@ -176,6 +176,50 @@ def scan_bill_process():
                            bill_name_on_invoice=extracted.get(
                                "patient_name", "N/A"),
                            bill_date=extracted.get("bill_date", "N/A"))
+@app.route("/scan-bill/process-text", methods=["POST"])
+def scan_bill_process_text():
+    """
+    Receives OCR text extracted by Tesseract.js in the browser.
+    Browser does the heavy OCR work — server just parses the text.
+    No memory issues on Render free tier.
+    """
+    if "patient_id" not in session:
+        return redirect(url_for("index"))
+
+    ocr_text = request.form.get("ocr_text", "").strip()
+
+    if not ocr_text or len(ocr_text) < 10:
+        return render_template("scan_bill.html",
+                               error="No text received from OCR. Please try again.")
+
+    print(f"[Scan] Browser OCR text received: {len(ocr_text)} chars")
+    print(f"[Scan] Preview: {ocr_text[:200]}")
+
+    # Parse the OCR text
+    extracted = parse_bill_from_text(ocr_text)
+
+    if not extracted.get("drugs"):
+        # Show what was read so user knows what went wrong
+        preview = ocr_text[:200].replace("<","").replace(">","")
+        return render_template("scan_bill.html",
+                               error=(
+                                   f"Medicines not found in scanned text. "
+                                   f"Text detected: '{preview}'. "
+                                   f"Try better lighting or use "
+                                   f"'Add Bill by Text' instead."
+                               ))
+
+    pid     = session["patient_id"]
+    profile = get_profile_by_id(pid)
+    save_purchase(pid, extracted)
+
+    return render_template("saved.html",
+                           error=None,
+                           drugs=extracted.get("drugs", []),
+                           patient=profile,
+                           bill_name_on_invoice=extracted.get(
+                               "patient_name", "N/A"),
+                           bill_date=extracted.get("bill_date", "N/A"))
 # ── MODULE 1: ONE-CLICK DEMO BILL ─────────────────────────────────────────────
 @app.route("/demo-bill-link")
 def demo_bill_link():
