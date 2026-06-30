@@ -2,6 +2,9 @@ services:
   - type: web
     name: pharmvigilance-pro
     env: python
-    buildCommand: apt-get install -y tesseract-ocr && pip install -r requirements.txt
+    buildCommand: apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-eng libtesseract-dev && pip install -r requirements.txt
     startCommand: gunicorn webapp.app:app
     plan: free
+    envVars:
+      - key: TESSDATA_PREFIX
+        value: /usr/share/tesseract-ocr/5/tessdata

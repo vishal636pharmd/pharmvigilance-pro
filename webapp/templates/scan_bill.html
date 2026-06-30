@@ -229,6 +229,22 @@
         return;
       }
 
+      // Check image size — very large images slow down OCR
+      const sizeKB = Math.round(capturedImage.length * 0.75 / 1024);
+      console.log(`Image size: ~${sizeKB} KB`);
+
+      showStatus(
+        '<span class="spinner"></span>'
+        + `Reading your bill (image ~${sizeKB}KB)... `
+        + 'This takes 15-30 seconds on the server.',
+        "loading"
+      );
+
+      document.getElementById("submitSection").style.display = "none";
+      document.getElementById("imageData").value = capturedImage;
+      document.getElementById("ocrForm").submit();
+    }
+
       showStatus(
         '<span class="spinner"></span>'
         + 'Reading your bill... this takes 10-20 seconds.',
@@ -238,7 +254,7 @@
       document.getElementById("submitSection").style.display = "none";
       document.getElementById("imageData").value = capturedImage;
       document.getElementById("ocrForm").submit();
-    }
+    
 
     function retake() {
       capturedImage = null;

@@ -126,27 +126,44 @@ def scan_bill_process():
         return render_template("scan_bill.html",
                                error="No image received. Please try again.")
 
+    # Run OCR
     ocr_result = extract_text_from_image(image_data)
 
     if not ocr_result["success"]:
         return render_template("scan_bill.html",
-                               error=(f"OCR error: {ocr_result['error']}. "
-                                      f"Try the text paste method instead."))
+                               error=(
+                                   f"OCR not available on server: "
+                                   f"{ocr_result['error']}. "
+                                   f"Use the text paste method instead — "
+                                   f"open your Apollo bill, "
+                                   f"select all text, copy and paste at "
+                                   f"/paste-bill-text"
+                               ))
 
     ocr_text = ocr_result["text"]
+    print(f"[Scan] OCR text preview: {ocr_text[:200]}")
+
     if not ocr_text or len(ocr_text.strip()) < 10:
         return render_template("scan_bill.html",
-                               error=("Could not read text from the image. "
-                                      "Please ensure good lighting and "
-                                      "the bill is in focus."))
+                               error=(
+                                   "Could not read text from image. "
+                                   "Tips: ensure good lighting, "
+                                   "hold camera steady, make sure "
+                                   "the medicine table row is clearly visible."
+                               ))
 
     extracted = parse_bill_from_text(ocr_text)
 
     if not extracted.get("drugs"):
+        # Show the raw OCR text so user can see what was read
+        preview = ocr_text[:300].replace("<", "").replace(">", "")
         return render_template("scan_bill.html",
-                               error=("No medicines found in the image. "
-                                      "Ensure the medicine table is clearly "
-                                      "visible and try again."))
+                               error=(
+                                   f"Medicines not found in the scanned text. "
+                                   f"Raw text detected: '{preview}...'. "
+                                   f"Please retake with better lighting "
+                                   f"or use text paste at /paste-bill-text"
+                               ))
 
     pid     = session["patient_id"]
     profile = get_profile_by_id(pid)
@@ -159,66 +176,6 @@ def scan_bill_process():
                            bill_name_on_invoice=extracted.get(
                                "patient_name", "N/A"),
                            bill_date=extracted.get("bill_date", "N/A"))
-
-
-# ── MODULE 1: TEXT PASTE FALLBACK ─────────────────────────────────────────────
-@app.route("/paste-bill-text", methods=["GET", "POST"])
-def paste_bill_text():
-    """Backup method: paste copied text from Apollo invoice."""
-    if "patient_id" not in session:
-        return redirect(url_for("index"))
-
-    if request.method == "POST":
-        bill_text = request.form.get("bill_text", "").strip()
-        if not bill_text:
-            return render_template("paste_bill_text.html",
-                                   error="Please paste your bill text.")
-
-        html = f"<html><body><pre>{bill_text}</pre></body></html>"
-        extracted = auto_detect_and_parse(
-            html, "https://invoice.apollopharmacy.in/text")
-
-        if not extracted.get("drugs"):
-            drugs = []
-            for line in bill_text.split("\n"):
-                if re.search(r"\d+\s*(MG|MCG|ML|G|TAB|CAP)", line, re.I):
-                    if any(w in line.upper() for w in
-                           ["PRODUCT", "MEDICINE", "DESCRIPTION", "ITEM"]):
-                        continue
-                    parts = line.strip().split()
-                    if parts:
-                        if parts[0].isdigit():
-                            drug_name = " ".join(parts[1:])
-                            qty = parts[0]
-                        else:
-                            drug_name = line.strip()
-                            qty = "N/A"
-                        drug_name = re.sub(
-                            r"[\d\.]+\s*$", "", drug_name).strip()
-                        if len(drug_name) > 3:
-                            drugs.append({
-                                "drug_name": drug_name,
-                                "quantity": qty,
-                                "price": "N/A"
-                            })
-            if drugs:
-                extracted["drugs"] = drugs
-
-        pid     = session["patient_id"]
-        profile = get_profile_by_id(pid)
-        save_purchase(pid, extracted)
-
-        return render_template("saved.html",
-                               error=None,
-                               drugs=extracted.get("drugs", []),
-                               patient=profile,
-                               bill_name_on_invoice=extracted.get(
-                                   "patient_name", "N/A"),
-                               bill_date=extracted.get("bill_date", "N/A"))
-
-    return render_template("paste_bill_text.html", error=None)
-
-
 # ── MODULE 1: ONE-CLICK DEMO BILL ─────────────────────────────────────────────
 @app.route("/demo-bill-link")
 def demo_bill_link():

@@ -3,129 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PVPro — ICSR Queue</title>
+  <title>PVPro — Safety Reports</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: #0D1B2A;
-           color: #E8F4FD; padding: 28px 20px; }
-    .logo { font-size: 11px; letter-spacing: 5px; color: #4FC3F7; margin-bottom: 24px; }
+    body { font-family: 'Segoe UI', sans-serif;
+           background: #0D1B2A; color: #E8F4FD;
+           min-height: 100vh; padding: 28px 20px; }
+    .logo { font-size: 11px; letter-spacing: 5px;
+            color: #4FC3F7; margin-bottom: 24px; }
     h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-    .sub { color: #90CAF9; font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
-    .back { color: #4FC3F7; font-size: 13px; text-decoration: none;
-            display: block; margin-bottom: 20px; }
+    .sub { color: #90CAF9; font-size: 14px;
+           margin-bottom: 28px; line-height: 1.6; }
+    .back { color: #4FC3F7; font-size: 13px;
+            text-decoration: none; display: block; margin-bottom: 20px; }
 
-    .legend { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #90CAF9; }
+    .legend { display: flex; gap: 16px; margin-bottom: 20px;
+              flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center;
+                   gap: 6px; font-size: 12px; color: #90CAF9; }
     .dot { width: 10px; height: 10px; border-radius: 50%; }
     .dot-unknown { background: #EF5350; }
     .dot-known   { background: #66BB6A; }
     .dot-pending { background: #FFA726; }
 
-    .card { background: #1A2A3A; border-radius: 12px; padding: 16px;
-            margin-bottom: 14px; }
-    .card.unknown { border-left: 4px solid #EF5350; }
-    .card.known   { border-left: 4px solid #66BB6A; }
+    .info-box {
+      background: #1565C015; border: 1px solid #1565C040;
+      border-radius: 12px; padding: 16px; font-size: 13px;
+      color: #90CAF9; line-height: 1.8; margin-bottom: 24px;
+    }
+    .info-box strong { color: #4FC3F7; display: block;
+                       margin-bottom: 6px; font-size: 14px; }
+    .info-box a { color: #4FC3F7; }
+    .step { display: flex; gap: 10px; margin-bottom: 8px; }
+    .step-n { min-width: 22px; height: 22px; background: #1565C020;
+              border: 1px solid #1565C0; border-radius: 50%;
+              display: flex; align-items: center; justify-content: center;
+              font-size: 11px; color: #4FC3F7; flex-shrink: 0; }
+    .step-t { font-size: 13px; color: #B0BEC5;
+              padding-top: 1px; line-height: 1.5; }
 
-    .card-header { display: flex; justify-content: space-between;
-                   align-items: flex-start; margin-bottom: 10px; }
+    .run-btn {
+      display: block; width: 100%; padding: 14px;
+      background: #7B1FA2; color: #E1BEE7; border: none;
+      border-radius: 12px; font-size: 15px; font-weight: 600;
+      text-align: center; text-decoration: none; margin-bottom: 24px;
+      cursor: pointer;
+    }
+
+    .report-card {
+      background: #1A2A3A; border-radius: 12px;
+      padding: 16px; margin-bottom: 14px;
+    }
+    .report-card.unknown { border-left: 4px solid #EF5350; }
+    .report-card.known   { border-left: 4px solid #66BB6A; }
+
+    .card-top { display: flex; justify-content: space-between;
+                align-items: flex-start; margin-bottom: 10px; }
     .drug-name { font-size: 15px; font-weight: 700; }
     .meddra    { font-size: 13px; color: #4FC3F7; margin-top: 2px; }
-
-    .status-badge { font-size: 11px; padding: 4px 12px; border-radius: 20px;
-                    font-weight: 600; white-space: nowrap; }
-    .status-unknown { background: #EF535020; color: #EF9A9A;
-                      border: 1px solid #EF5350; }
-    .status-known   { background: #2E7D3220; color: #81C784;
-                      border: 1px solid #2E7D32; }
-    .status-pending { background: #E6510020; color: #FFB74D;
-                      border: 1px solid #E65100; }
-
     .card-meta { font-size: 12px; color: #546E7A; margin-bottom: 12px; }
+
+    .badge { font-size: 11px; padding: 4px 12px;
+             border-radius: 20px; font-weight: 600; white-space: nowrap; }
+    .badge-unknown { background: #EF535020; color: #EF9A9A;
+                     border: 1px solid #EF5350; }
+    .badge-known   { background: #2E7D3220; color: #81C784;
+                     border: 1px solid #2E7D32; }
+    .badge-pending { background: #E6510020; color: #FFB74D;
+                     border: 1px solid #E65100; }
 
     .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn { padding: 8px 16px; border: none; border-radius: 8px;
-           font-size: 13px; font-weight: 600; cursor: pointer;
-           text-decoration: none; display: inline-block; }
-    .btn-pdf { background: #1565C0; color: #fff; }
-    .btn-xml { background: #1B5E20; color: #A5D6A7;
-               border: 1px solid #2E7D32; }
-    .btn-run { background: #4A148C; color: #E1BEE7;
-               border: 1px solid #7B1FA2; }
+           font-size: 13px; font-weight: 600;
+           cursor: pointer; text-decoration: none;
+           display: inline-block; }
+    .btn-pdf  { background: #1565C0; color: #fff; }
+    .btn-xml  { background: #1B5E20; color: #A5D6A7;
+                border: 1px solid #2E7D32; }
+    .btn-rerun { background: #4A148C; color: #E1BEE7;
+                 border: 1px solid #7B1FA2; }
 
-    .pvpi-note { background: #1565C015; border: 1px solid #1565C0;
-                 border-radius: 10px; padding: 16px; font-size: 13px;
-                 color: #90CAF9; line-height: 1.7; margin-bottom: 24px; }
-    .pvpi-note strong { color: #4FC3F7; }
-    .pvpi-note a { color: #4FC3F7; }
-
-    .run-all { display: block; width: 100%; padding: 14px;
-               background: #7B1FA2; color: #fff; border: none;
-               border-radius: 12px; font-size: 15px; font-weight: 600;
-               text-align: center; text-decoration: none; margin-bottom: 24px; }
-
-    .empty { text-align: center; padding: 40px; color: #546E7A; font-size: 14px; }
+    .known-note { font-size: 13px; color: #546E7A; }
+    .empty { text-align: center; padding: 40px;
+             color: #546E7A; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="logo">PVPRO</div>
   <a href="/" class="back">← Dashboard</a>
-  <h2>ICSR Submission Queue</h2>
+
+  <h2>Safety Reports Dashboard</h2>
   <p class="sub">
-    ADRs checked against Lexicomp. Unknown ADRs auto-generate ICSR reports
-    for PvPI submission. Known ADRs are flagged as already documented.
+    Reported ADRs checked against the FDA drug safety database.
+    Undocumented reactions are flagged for regulatory submission.
   </p>
 
   <div class="legend">
     <div class="legend-item">
-  <div class="dot dot-unknown"></div> Unknown in FDA Label → ICSR generated
-</div>
-<div class="legend-item">
-  <div class="dot dot-known"></div> Known in FDA Label → No ICSR needed
-</div>
+      <div class="dot dot-unknown"></div>
+      Not in FDA label → ICSR report generated
+    </div>
     <div class="legend-item">
-      <div class="dot dot-pending"></div> Pending submission
+      <div class="dot dot-known"></div>
+      Documented in FDA label → No new report needed
+    </div>
+    <div class="legend-item">
+      <div class="dot dot-pending"></div>
+      Awaiting submission
     </div>
   </div>
 
-  <div class="pvpi-note">
-    <strong>How to submit to PvPI VigiFlow:</strong><br>
-    1. Download the E2B XML for any "Unknown" ADR below<br>
-    2. Go to <a href="https://vigiflow.ipc.gov.in" target="_blank">
-       https://vigiflow.ipc.gov.in</a><br>
-    3. Register as a reporter (free, Pharm.D students qualify)<br>
-    4. Upload the XML file → Submit<br>
-    5. You will receive a PvPI acknowledgement number
+  <div class="info-box">
+    <strong>How to submit to PvPI VigiFlow</strong>
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-t">Download the E2B XML for any "Unlisted" ADR below</div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-t">
+        Go to <a href="https://vigiflow.ipc.gov.in" target="_blank">
+        vigiflow.ipc.gov.in</a>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-t">
+        Register as reporter (free — Pharm.D students qualify)
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-t">Upload the XML file → Submit → receive PvPI acknowledgement</div>
+    </div>
   </div>
 
-  <a href="/run-all-checks" class="run-all">
-    ⚡ Run Lexicomp Check on All Reports →
+  <a href="/run-all-checks" class="run-btn">
+    ⚡ Run FDA Safety Check on All Reports →
   </a>
 
   {% if queue %}
     {% for item in queue %}
-    <div class="card {% if 'unknown' in item.check_result %}unknown{% else %}known{% endif %}">
-      <div class="card-header">
+    <div class="report-card
+      {% if 'unknown' in item.check_result %}unknown
+      {% else %}known{% endif %}">
+
+      <div class="card-top">
         <div>
           <div class="drug-name">{{ item.drug_name }}</div>
           <div class="meddra">MedDRA PT: {{ item.meddra_pt }}</div>
         </div>
-        <span class="status-badge
-          {% if 'unknown' in item.check_result %}status-unknown
-          {% elif 'known' in item.check_result %}status-known
-          {% else %}status-pending{% endif %}">
+        <span class="badge
+          {% if 'unknown' in item.check_result %}badge-unknown
+          {% elif 'known' in item.check_result %}badge-known
+          {% else %}badge-pending{% endif %}">
           {% if 'unknown' in item.check_result %}
-  UNLISTED IN FDA LABEL
-{% elif 'known' in item.check_result %}
-  KNOWN IN FDA LABEL
+            UNLISTED IN FDA LABEL
+          {% elif 'known' in item.check_result %}
+            DOCUMENTED IN FDA LABEL
           {% else %}
-            {{ item.icsr_status }}
+            {{ item.icsr_status | upper }}
           {% endif %}
         </span>
       </div>
 
       <div class="card-meta">
-        Report #{{ item.report_id }} ·
-        Queue ID: {{ item.queue_id }} ·
+        Report #{{ item.report_id }} &nbsp;·&nbsp;
+        Queue #{{ item.queue_id }} &nbsp;·&nbsp;
         {{ item.created_at[:16] if item.created_at else 'N/A' }}
       </div>
 
@@ -136,11 +180,12 @@
         <a href="/icsr/download/xml/{{ item.report_id }}"
            class="btn btn-xml">💾 E2B XML (VigiFlow)</a>
         <a href="/check-adr/{{ item.report_id }}"
-           class="btn btn-run">🔄 Re-run Check</a>
+           class="btn btn-rerun">🔄 Re-run Check</a>
       </div>
       {% else %}
-      <div style="font-size:13px;color:#546E7A;">
-        ✓ This ADR is documented in Lexicomp — no new report needed.
+      <div class="known-note">
+        ✓ This reaction is documented in the FDA label
+        for this drug — no new safety report required.
       </div>
       {% endif %}
     </div>
@@ -148,7 +193,7 @@
   {% else %}
     <div class="empty">
       No reports checked yet.<br>
-      Click "Run Lexicomp Check on All Reports" above to start.
+      Tap "Run FDA Safety Check" above to begin.
     </div>
   {% endif %}
 </body>

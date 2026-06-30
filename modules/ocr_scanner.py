@@ -1,14 +1,11 @@
 # modules/ocr_scanner.py
-# PURPOSE: Extracts medicine details from a photo of a pharmacy bill
-# using OCR (Optical Character Recognition).
-# Works for Apollo, MedPlus, local pharmacies — any printed bill.
-# Uses pytesseract (free, open source, no API key needed).
+# OCR bill scanner using pytesseract + Pillow
+# Works on Render after tesseract-ocr is installed via render.yaml
 
 import re
 import os
 import base64
-import sqlite3
-from datetime import datetime
+import io
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -16,86 +13,113 @@ DB_PATH = os.path.join(
 )
 
 
-def extract_text_from_image(image_data_or_path):
+def _try_set_tesseract_path():
+    """Sets tesseract path for different environments."""
+    import pytesseract
+    possible_paths = [
+        "/usr/bin/tesseract",                    # Linux (Render)
+        "/usr/local/bin/tesseract",              # Linux alternative
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",  # Windows
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            pytesseract.pytesseract.tesseract_cmd = path
+            print(f"[OCR] Tesseract found at: {path}")
+            return True
+    print("[OCR] Tesseract not found at standard paths — using default")
+    return False
+
+
+def extract_text_from_image(image_data):
     """
     Extracts all text from a pharmacy bill image using OCR.
-
-    Args:
-        image_data_or_path: either a file path (str) or
-                            base64 encoded image data (bytes/str)
-
-    Returns:
-        dict with extracted_text (str) and success (bool)
+    Accepts base64 image data from browser.
+    Returns dict with success, text, error.
     """
     try:
         from PIL import Image
         import pytesseract
-        import io
-
-        # Load image
-        if isinstance(image_data_or_path, str):
-            if image_data_or_path.startswith("data:image"):
-                # Base64 from browser camera
-                header, data = image_data_or_path.split(",", 1)
-                image_bytes = base64.b64decode(data)
-                img = Image.open(io.BytesIO(image_bytes))
-            elif os.path.exists(image_data_or_path):
-                # File path
-                img = Image.open(image_data_or_path)
-            else:
-                # Raw base64 without header
-                image_bytes = base64.b64decode(image_data_or_path)
-                img = Image.open(io.BytesIO(image_bytes))
-        else:
-            # Bytes directly
-            img = Image.open(io.BytesIO(image_data_or_path))
-
-        # Pre-process image for better OCR accuracy
-        img = _preprocess_image(img)
-
-        # Run OCR
-        custom_config = r"--oem 3 --psm 6"
-        text = pytesseract.image_to_string(img, config=custom_config)
-
-        print(f"[OCR] Extracted {len(text)} characters from image")
-        return {"success": True, "text": text, "error": None}
-
-    except ImportError:
+    except ImportError as e:
         return {
             "success": False,
             "text": "",
-            "error": "pytesseract not installed on server"
+            "error": f"OCR library not installed: {e}"
         }
+
+    try:
+        _try_set_tesseract_path()
+
+        # Decode base64 image from browser
+        if "," in image_data:
+            # Remove data URL header (data:image/jpeg;base64,...)
+            image_data = image_data.split(",", 1)[1]
+
+        image_bytes = base64.b64decode(image_data)
+        img = Image.open(io.BytesIO(image_bytes))
+
+        # Convert to RGB if needed
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+
+        # Pre-process for better OCR
+        img = _preprocess_image(img)
+
+        # Run OCR with multiple configurations for best result
+        configs = [
+            r"--oem 3 --psm 6",   # best for structured documents
+            r"--oem 3 --psm 4",   # single column
+            r"--oem 1 --psm 6",   # legacy engine
+        ]
+
+        best_text = ""
+        for config in configs:
+            try:
+                text = pytesseract.image_to_string(img, config=config)
+                if len(text.strip()) > len(best_text.strip()):
+                    best_text = text
+            except Exception as e:
+                print(f"[OCR] Config {config} failed: {e}")
+                continue
+
+        if not best_text.strip():
+            return {
+                "success": False,
+                "text": "",
+                "error": "No text extracted. Ensure bill is well-lit and in focus."
+            }
+
+        print(f"[OCR] Successfully extracted {len(best_text)} characters")
+        return {"success": True, "text": best_text, "error": None}
+
     except Exception as e:
         print(f"[OCR] Error: {e}")
         return {"success": False, "text": "", "error": str(e)}
 
 
 def _preprocess_image(img):
-    """
-    Improves image quality for better OCR accuracy.
-    Converts to grayscale and increases contrast.
-    """
+    """Improves image quality for better OCR accuracy."""
     try:
         from PIL import ImageFilter, ImageEnhance
 
         # Convert to grayscale
         img = img.convert("L")
 
+        # Resize if too small
+        width, height = img.size
+        if width < 1200:
+            scale = 1200 / width
+            new_w = int(width * scale)
+            new_h = int(height * scale)
+            img = img.resize((new_w, new_h))
+
         # Increase contrast
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(2.0)
+        img = enhancer.enhance(2.5)
 
         # Sharpen
         img = img.filter(ImageFilter.SHARPEN)
-
-        # Resize if too small (OCR works better on larger images)
-        width, height = img.size
-        if width < 1000:
-            scale = 1000 / width
-            img = img.resize(
-                (int(width * scale), int(height * scale))
-            )
+        img = img.filter(ImageFilter.SHARPEN)
 
     except Exception as e:
         print(f"[OCR] Preprocessing warning: {e}")
@@ -105,13 +129,9 @@ def _preprocess_image(img):
 
 def parse_bill_from_text(ocr_text):
     """
-    Parses the OCR text from a pharmacy bill and extracts
-    structured medicine data.
-
-    Handles Apollo, MedPlus, and generic pharmacy formats.
-
-    Returns:
-        dict with patient_name, bill_date, invoice_no, drugs list
+    Parses OCR text from a pharmacy bill.
+    Handles Apollo, MedPlus, and all Indian pharmacy formats.
+    Returns dict with patient_name, bill_date, invoice_no, drugs.
     """
     data = {
         "patient_name": None,
@@ -121,31 +141,36 @@ def parse_bill_from_text(ocr_text):
         "source":       "Camera OCR"
     }
 
-    lines = ocr_text.split("\n")
-    cleaned_lines = [l.strip() for l in lines if l.strip()]
+    lines = [l.strip() for l in ocr_text.split("\n") if l.strip()]
+    full_text = ocr_text
+
+    print(f"[OCR Parser] Processing {len(lines)} lines")
 
     # ── Patient name ──────────────────────────────────────────────────────
-    for line in cleaned_lines:
-        m = re.search(
-            r"(?:Name|Patient|Customer)\s*[:\-]\s*([A-Za-z\s]{2,40})",
-            line, re.I
-        )
-        if m:
-            name = m.group(1).strip()
-            # Remove trailing words that aren't names
-            name = re.sub(
-                r"\s+(Mobile|Phone|No|Bill|Date|Mr|Mrs|Dr).*",
-                "", name, flags=re.I
-            ).strip()
-            if len(name) > 1:
-                data["patient_name"] = name
-                break
+    name_patterns = [
+        r"(?:Name|Patient|Pt\.?|Customer)\s*[:\-]\s*([A-Za-z][A-Za-z\s]{1,30})",
+        r"M/s\.?\s*([A-Z][A-Za-z\s]{2,25})",
+    ]
+    for line in lines:
+        for pattern in name_patterns:
+            m = re.search(pattern, line, re.I)
+            if m:
+                name = m.group(1).strip()
+                name = re.sub(
+                    r"\s+(Mobile|Phone|No|Bill|Date|Mr|Mrs|Dr|Ms)\b.*",
+                    "", name, flags=re.I
+                ).strip()
+                if 2 <= len(name) <= 30 and re.search(r"[A-Za-z]", name):
+                    data["patient_name"] = name
+                    break
+        if data["patient_name"]:
+            break
 
     # ── Bill number ───────────────────────────────────────────────────────
-    for line in cleaned_lines:
+    for line in lines:
         m = re.search(
-            r"(?:Bill|Invoice|Receipt)\s*(?:No|#|Number)\.?\s*[:\-]?\s*"
-            r"([A-Z0-9\-\/]{4,20})",
+            r"(?:Bill|Invoice|Receipt|Ref)\.?\s*(?:No|#|Number)\.?\s*[:\-]?\s*"
+            r"([A-Z0-9][A-Z0-9\-\/]{3,20})",
             line, re.I
         )
         if m:
@@ -154,12 +179,13 @@ def parse_bill_from_text(ocr_text):
 
     # ── Bill date ─────────────────────────────────────────────────────────
     date_patterns = [
-        r"(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})",  # 2026-06-26 20:20:00
-        r"(\d{2}[\/\-]\d{2}[\/\-]\d{4})",              # 26/06/2026
+        r"(\d{4}-\d{2}-\d{2}[\s\d:]*)",         # 2026-06-26 20:20:00
+        r"(\d{2}[\/\-]\d{2}[\/\-]\d{4})",        # 26/06/2026
+        r"(\d{2}[\/\-]\d{2}[\/\-]\d{2})\b",      # 26/06/26
         r"(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
-        r"\s+\d{4})",                                   # 26 Jun 2026
+        r"[\-\s]\d{2,4})",                         # 26-Jun-26
     ]
-    for line in cleaned_lines:
+    for line in lines:
         for pattern in date_patterns:
             m = re.search(pattern, line, re.I)
             if m:
@@ -172,60 +198,81 @@ def parse_bill_from_text(ocr_text):
     drugs = []
     seen  = set()
 
-    # Pattern 1: Lines with dosage info (most reliable)
-    # e.g. "10  PARACIP 500MG TAB 10S  H  30049069  CIPL  CH50394  0.96"
-    for line in cleaned_lines:
-        # Skip header lines
-        if any(word in line.upper() for word in
-               ["PRODUCT NAME", "MEDICINE", "DESCRIPTION",
-                "ITEM", "HSN", "BATCH", "EXPIRY", "GST%",
-                "AMOUNT", "MRP", "SCH", "MFRS"]):
+    SKIP_WORDS = {
+        "PRODUCT NAME", "ITEM NAME", "MEDICINE", "DESCRIPTION",
+        "ITEM", "HSN CODE", "BATCH NO", "BATCH", "EXPIRY", "GST",
+        "AMOUNT", "MRP", "TOTAL", "QTY", "QUANTITY", "SCH",
+        "MFRS", "CGST", "SGST", "TAXABLE", "INVOICE", "BILL",
+        "NAME", "APOLLO", "MEDPLUS", "PHARMACY", "REGISTERED",
+        "THANK", "TERMS", "CONDITION"
+    }
+
+    for line in lines:
+        line_upper = line.upper()
+
+        # Skip header and footer lines
+        if any(word in line_upper for word in SKIP_WORDS):
+            continue
+        if len(line) < 5:
             continue
 
-        # Check if line contains a drug dosage pattern
+        # Must contain a dosage pattern to be a drug line
         dose_match = re.search(
-            r"(\d+)\s*(?:MG|MCG|ML|G|IU|MG/ML)", line, re.I
+            r"\b(\d+\.?\d*)\s*(MG|MCG|ML|G|IU|MG/ML|MCG/ML)\b",
+            line, re.I
         )
         if not dose_match:
             continue
 
-        # Try to extract: qty at start + drug name
+        # Try to extract qty at start of line
+        qty = "N/A"
+        drug_name = ""
+        mrp = "N/A"
+
         qty_match = re.match(r"^(\d+)\s+(.+)", line.strip())
         if qty_match:
-            qty      = qty_match.group(1)
-            rest     = qty_match.group(2).strip()
-            # Drug name ends before extra codes/numbers
-            # e.g. "PARACIP 500MG TAB 10S  H  30049069"
-            drug_match = re.match(
-                r"([A-Z][A-Za-z0-9\s]+?\d+\s*(?:MG|MCG|ML|G|IU)"
-                r"[A-Za-z\s\d\']*?)\s{2,}",
-                rest + "  ", re.I
-            )
-            if drug_match:
-                drug_name = drug_match.group(1).strip()
-            else:
-                # Take everything up to first double space or code
-                parts     = re.split(r"\s{2,}|\t", rest)
-                drug_name = parts[0].strip() if parts else rest[:40]
-
-            # Try to extract MRP (usually last number before GST%)
-            mrp = "N/A"
-            numbers = re.findall(r"\d+\.?\d*", rest)
-            if len(numbers) >= 2:
-                mrp = numbers[-2]  # second to last is usually MRP
-
+            qty  = qty_match.group(1)
+            rest = qty_match.group(2).strip()
         else:
-            # No qty at start — take whole line as drug name
-            qty       = "N/A"
-            drug_name = line.strip()[:50]
-            mrp       = "N/A"
+            rest = line.strip()
+
+        # Extract drug name — take up to the first multiple-space gap
+        # or up to common trailing fields (HSN code = 8 digits)
+        drug_match = re.match(
+            r"([A-Z][A-Za-z0-9\s\-\.\']+?\d+\s*(?:MG|MCG|ML|G|IU)"
+            r"(?:[A-Za-z\s\d\'\/\.]*?))\s{2,}",
+            rest + "  ",
+            re.I
+        )
+        if drug_match:
+            drug_name = drug_match.group(1).strip()
+        else:
+            # Split on 2+ spaces or tabs
+            parts = re.split(r"\s{2,}|\t", rest)
+            drug_name = parts[0].strip()
+            # Limit to reasonable length
+            drug_name = drug_name[:60]
+
+        # Try to find MRP in the line
+        # Apollo format: ... EXPIRY | SCH | MRP | AMOUNT | GST%
+        numbers = re.findall(r"\d+\.?\d*", rest)
+        if len(numbers) >= 3:
+            # In Apollo bills MRP is usually near the end
+            # but before the last 2-3 values (AMOUNT, GST%)
+            try:
+                mrp = numbers[-3]
+            except:
+                mrp = "N/A"
 
         # Clean drug name
         drug_name = re.sub(r"\s+", " ", drug_name).strip()
+        # Remove trailing standalone numbers or letters
+        drug_name = re.sub(r"\s+[A-Z]\s*$", "", drug_name).strip()
 
-        # Validate: must have letter + digit (e.g. 500MG)
-        if (len(drug_name) > 3 and
-                re.search(r"[A-Za-z]", drug_name) and
+        # Validate
+        if (len(drug_name) > 4 and
+                re.search(r"[A-Za-z]{2,}", drug_name) and
+                re.search(r"\d", drug_name) and  # must have a number (dosage)
                 drug_name.lower() not in seen):
             seen.add(drug_name.lower())
             drugs.append({
@@ -233,18 +280,20 @@ def parse_bill_from_text(ocr_text):
                 "quantity":  qty,
                 "price":     mrp
             })
+            print(f"[OCR Parser] Drug found: {drug_name} | Qty:{qty} | MRP:{mrp}")
 
-    # Pattern 2: Common medicine name patterns (fallback)
+    # Fallback: simpler pattern if no drugs found yet
     if not drugs:
-        medicine_pattern = re.compile(
-            r"([A-Z][A-Za-z]+(?:\s[A-Za-z0-9]+){0,3}"
-            r"\s\d+\s*(?:MG|MCG|ML|G|IU)[A-Za-z\s\d\']*)",
+        print("[OCR Parser] Primary extraction failed, trying fallback...")
+        fallback = re.compile(
+            r"([A-Z][A-Z0-9]+\s+\d+\.?\d*\s*(?:MG|MCG|ML|G|IU)"
+            r"(?:\s+[A-Z]+)*(?:\s+\d+[SsMmLl])?)",
             re.I
         )
-        for line in cleaned_lines:
-            for m in medicine_pattern.finditer(line):
+        for line in lines:
+            for m in fallback.finditer(line):
                 drug_name = re.sub(r"\s+", " ", m.group(1)).strip()
-                if (len(drug_name) > 3 and
+                if (len(drug_name) > 4 and
                         drug_name.lower() not in seen):
                     seen.add(drug_name.lower())
                     drugs.append({
@@ -252,11 +301,8 @@ def parse_bill_from_text(ocr_text):
                         "quantity":  "N/A",
                         "price":     "N/A"
                     })
+                    print(f"[OCR Parser] Fallback drug: {drug_name}")
 
     data["drugs"] = drugs
-
-    print(f"[OCR] Parsed: {len(drugs)} drug(s) found")
-    for d in drugs:
-        print(f"  -> {d['drug_name']} | Qty:{d['quantity']} | MRP:{d['price']}")
-
+    print(f"[OCR Parser] Total drugs found: {len(drugs)}")
     return data
