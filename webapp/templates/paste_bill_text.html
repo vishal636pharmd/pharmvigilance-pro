@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PVPro — Paste Bill Text</title>
+  <title>PVPro — Add Bill by Text</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif;
@@ -11,9 +11,10 @@
            min-height: 100vh; padding: 28px 20px; }
     .back { color: #4FC3F7; font-size: 13px;
             text-decoration: none; display: block; margin-bottom: 24px; }
-    h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    h2  { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     .sub { color: #90CAF9; font-size: 14px;
            margin-bottom: 24px; line-height: 1.6; }
+
     .step-card {
       background: #1A2A3A; border-radius: 12px;
       padding: 14px 16px; margin-bottom: 10px;
@@ -26,17 +27,20 @@
       font-weight: 700; color: #fff; flex-shrink: 0;
     }
     .step-text { font-size: 13px; color: #B0BEC5;
-                 line-height: 1.6; padding-top: 2px; }
-    .step-text strong { color: #E8F4FD; display: block; margin-bottom: 2px; }
+                 line-height: 1.6; padding-top: 3px; }
+    .step-text strong { color: #E8F4FD; display: block;
+                        margin-bottom: 2px; }
+
     label { display: block; font-size: 12px; letter-spacing: 1px;
             color: #546E7A; margin-top: 20px; margin-bottom: 8px; }
     textarea {
       width: 100%; background: #1A2A3A;
       border: 1px solid #1E3A5F; border-radius: 10px;
-      padding: 14px; color: #E8F4FD; font-size: 13px;
-      height: 200px; resize: none; outline: none;
+      padding: 14px; color: #E8F4FD; font-size: 12px;
+      height: 220px; resize: none; outline: none; line-height: 1.5;
     }
     textarea:focus { border-color: #1565C0; }
+
     .error {
       background: #B71C1C22; border: 1px solid #EF5350;
       color: #EF9A9A; padding: 12px; border-radius: 8px;
@@ -48,36 +52,38 @@
       font-size: 16px; font-weight: 600;
       margin-top: 14px; cursor: pointer;
     }
+
     .info-box {
       background: #1565C015; border: 1px solid #1565C040;
       border-radius: 10px; padding: 14px; font-size: 12px;
       color: #90CAF9; margin-top: 20px; line-height: 1.7;
     }
-    .info-box strong { color: #4FC3F7; }
+    .info-box strong { color: #4FC3F7; display: block;
+                       margin-bottom: 6px; }
   </style>
 </head>
 <body>
   <a href="/" class="back">← Back to Dashboard</a>
   <h2>Add Bill by Text</h2>
   <p class="sub">
-    Open your Apollo bill → copy all text → paste below.
-    Works for Apollo, MedPlus, any pharmacy.
+    Open your Apollo invoice page → copy all text → paste below.
+    Works for Apollo, MedPlus, and any pharmacy.
   </p>
 
   <div class="step-card">
     <div class="step-num">1</div>
     <div class="step-text">
       <strong>Open your Apollo SMS bill link</strong>
-      Tap the SMS link → enter OTP → your invoice page opens
+      Tap the link from Apollo SMS → enter OTP → invoice page opens
     </div>
   </div>
 
   <div class="step-card">
     <div class="step-num">2</div>
     <div class="step-text">
-      <strong>Select all text on the page</strong>
-      On phone: long press → Select All → Copy<br>
-      On PC: press Ctrl+A then Ctrl+C on the invoice page
+      <strong>Select all text on the invoice page</strong>
+      On phone: long press on page → tap Select All → Copy<br>
+      On PC: press Ctrl+A on the invoice page → then Ctrl+C
     </div>
   </div>
 
@@ -85,33 +91,34 @@
     <div class="step-num">3</div>
     <div class="step-text">
       <strong>Paste below and tap Extract</strong>
-      Come back to this page → tap the box below → Ctrl+V or long press Paste
+      Tap the text box below → long press → Paste → tap Extract
     </div>
   </div>
 
   {% if error %}
-  <div class="error">⚠ {{ error }}</div>
+  <div class="error">⚠️ {{ error }}</div>
   {% endif %}
 
   <form method="POST">
-    <label>PASTE YOUR BILL TEXT HERE</label>
-    <textarea name="bill_text"
-      placeholder="Paste your complete Apollo bill text here...
+    <label>PASTE YOUR COMPLETE BILL TEXT HERE</label>
+    <textarea name="bill_text" placeholder="Paste your Apollo bill text here. Example:
 
-Example of what it should look like:
 Name: VISHAL   Mobile: 9445571426
 Bill No: 16280SI00001432
 Bill Date: 2026-06-26 20:20:00
-Qty  PRODUCT NAME
-10   PARACIP 500MG TAB 10S   0.96"></textarea>
+
+10   PARACIP 500MG TAB 10'S   H   30049069   CIPL   CH50394   Nov-28   0.96   9.60   5.00
+
+The medicine line above is what gets extracted automatically."></textarea>
     <button type="submit">Extract Medicine Details →</button>
   </form>
 
   <div class="info-box">
-    <strong>Why copy-paste instead of URL?</strong><br>
-    Apollo uses OTP-based security that only allows your phone's browser
-    to read the page after OTP verification. No app can bypass this —
-    so copy-paste is the reliable, secure way to get your bill data.
+    <strong>Tip — what to copy</strong>
+    Open your Apollo invoice → select ALL text on the page
+    (including the medicine table row showing PARACIP or
+    whatever medicine you bought). The system automatically
+    finds the medicine name, quantity and price from the text.
   </div>
 </body>
 </html>

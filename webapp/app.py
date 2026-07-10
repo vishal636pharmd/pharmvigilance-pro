@@ -593,7 +593,68 @@ def my_symptoms():
         return redirect(url_for("index"))
     return jsonify({
         "reports": get_symptom_reports_for_patient(session["patient_id"])})
+@app.route("/paste-bill-text", methods=["GET", "POST"])
+def paste_bill_text():
+    """Text paste fallback — always works for any pharmacy bill."""
+    if "patient_id" not in session:
+        return redirect(url_for("index"))
 
+    if request.method == "POST":
+        bill_text = request.form.get("bill_text", "").strip()
+        if not bill_text:
+            return render_template("paste_bill_text.html",
+                                   error="Please paste your bill text.")
+
+        extracted = parse_bill_from_text(bill_text)
+
+        # Extra fallback parser for plain text
+        if not extracted.get("drugs"):
+            drugs = []
+            for line in bill_text.split("\n"):
+                if re.search(r"\d+\s*(MG|MCG|ML|G|TAB|CAP)", line, re.I):
+                    if any(w in line.upper() for w in
+                           ["PRODUCT", "ITEM", "DESCRIPTION", "HSN"]):
+                        continue
+                    parts = line.strip().split()
+                    if parts:
+                        if parts[0].isdigit():
+                            drug_name = " ".join(parts[1:])
+                            qty = parts[0]
+                        else:
+                            drug_name = line.strip()
+                            qty = "N/A"
+                        drug_name = re.sub(r"\s+", " ", drug_name).strip()
+                        drug_name = re.sub(
+                            r"\s+[A-Z]\s+\d{8}.*", "", drug_name).strip()
+                        if len(drug_name) > 4:
+                            drugs.append({
+                                "drug_name": drug_name,
+                                "quantity":  qty,
+                                "price":     "N/A"
+                            })
+            if drugs:
+                extracted["drugs"] = drugs
+
+        if not extracted.get("drugs"):
+            return render_template(
+                "paste_bill_text.html",
+                error=("No medicines found. Make sure you copied "
+                       "the full bill text including the medicine table rows.")
+            )
+
+        pid     = session["patient_id"]
+        profile = get_profile_by_id(pid)
+        save_purchase(pid, extracted)
+
+        return render_template("saved.html",
+                               error=None,
+                               drugs=extracted.get("drugs", []),
+                               patient=profile,
+                               bill_name_on_invoice=extracted.get(
+                                   "patient_name", "N/A"),
+                               bill_date=extracted.get("bill_date", "N/A"))
+
+    return render_template("paste_bill_text.html", error=None)
 
 if __name__ == "__main__":
     print("=" * 50)
