@@ -5,7 +5,7 @@ import base64
 import io
 
 DB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(_file_))),
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "database", "pvpro.db"
 )
 
