@@ -178,35 +178,28 @@ def scan_bill_process():
                            bill_date=extracted.get("bill_date", "N/A"))
 @app.route("/scan-bill/process-text", methods=["POST"])
 def scan_bill_process_text():
-    """
-    Receives OCR text extracted by Tesseract.js in the browser.
-    Browser does the heavy OCR work — server just parses the text.
-    No memory issues on Render free tier.
-    """
     if "patient_id" not in session:
         return redirect(url_for("index"))
 
     ocr_text = request.form.get("ocr_text", "").strip()
 
-    if not ocr_text or len(ocr_text) < 10:
+    if not ocr_text or len(ocr_text) < 5:
         return render_template("scan_bill.html",
-                               error="No text received from OCR. Please try again.")
+                               error="No text received. Please try again.")
 
-    print(f"[Scan] Browser OCR text received: {len(ocr_text)} chars")
-    print(f"[Scan] Preview: {ocr_text[:200]}")
+    print(f"[Scan] RAW OCR TEXT:\n{ocr_text}")
 
-    # Parse the OCR text
     extracted = parse_bill_from_text(ocr_text)
 
     if not extracted.get("drugs"):
-        # Show what was read so user knows what went wrong
-        preview = ocr_text[:200].replace("<","").replace(">","")
+        # Show raw OCR text so we can debug exactly what was read
+        safe_text = ocr_text[:400].replace("<","").replace(">","")
         return render_template("scan_bill.html",
                                error=(
-                                   f"Medicines not found in scanned text. "
-                                   f"Text detected: '{preview}'. "
-                                   f"Try better lighting or use "
-                                   f"'Add Bill by Text' instead."
+                                   f"OCR read this text but found no medicines: "
+                                   f"[{safe_text}] — "
+                                   f"Please use 'Add Bill by Text' instead or "
+                                   f"retake with better lighting."
                                ))
 
     pid     = session["patient_id"]
