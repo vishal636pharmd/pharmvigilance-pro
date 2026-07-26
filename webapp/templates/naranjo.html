@@ -54,23 +54,58 @@
       line-height: 1.5;
     }
 
-    .opts { display: flex; gap: 8px; }
+    /* ===== IMPROVED OPTION BUTTONS ===== */
+    .opts {
+      display: flex;
+      gap: 12px;
+    }
+    .opts > span {
+      flex: 1;
+      display: flex;
+    }
     input[type=radio] { display: none; }
     label {
-      flex: 1; text-align: center; padding: 10px 6px;
-      background: #0D1B2A; border: 1px solid #1E3A5F;
-      border-radius: 8px; font-size: 13px; color: #90CAF9;
-      cursor: pointer; transition: all 0.15s;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      text-align: center;
+      padding: 16px 10px;
+      min-height: 64px;
+      background: #0D1B2A;
+      border: 2px solid #1E3A5F;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #90CAF9;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    label:hover {
+      border-color: #4FC3F7;
+      color: #4FC3F7;
+      background: #12233A;
+      transform: translateY(-1px);
     }
     input[type=radio]:checked + label {
-      background: #1565C0; border-color: #1565C0; color: #fff;
+      background: #1565C0;
+      border-color: #4FC3F7;
+      color: #fff;
+      box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.25);
+      transform: translateY(-1px);
     }
-    label:hover { border-color: #1565C0; color: #4FC3F7; }
-
     .score-label {
-      font-size: 10px; color: #546E7A;
-      display: block; margin-top: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #78909C;
+      display: block;
     }
+    input[type=radio]:checked + label .score-label {
+      color: #D6ECFF;
+    }
+    /* ===== END IMPROVED OPTION BUTTONS ===== */
 
     button {
       width: 100%; padding: 16px; background: #1565C0;
