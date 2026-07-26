@@ -11,16 +11,13 @@ DB_PATH = os.path.join(
 def extract_text_from_image(image_data):
     """Not used — browser handles OCR via Tesseract.js"""
     return {"success": False, "text": "",
-            "error": "Browser-side OCR used instead"}
+            "error": "Browser-side OCR used"}
 
 
 def parse_bill_from_text(ocr_text):
     """
-    Parses OCR text from any pharmacy bill.
-    Flexible enough to handle OCR imperfections like:
-    - Extra spaces between characters
-    - Mixed case from OCR
-    - Missing or extra characters
+    Parses OCR text from Apollo, MedPlus, or any Indian pharmacy bill.
+    Handles both portrait and landscape bill formats.
     """
     data = {
         "patient_name": None,
@@ -30,157 +27,317 @@ def parse_bill_from_text(ocr_text):
         "source":       "Camera OCR"
     }
 
-    # Normalize text — collapse multiple spaces
-    ocr_text_clean = re.sub(r"[ \t]+", " ", ocr_text)
-    lines = [l.strip() for l in ocr_text_clean.split("\n") if l.strip()]
+    # Normalize spacing
+    text = re.sub(r"[ \t]+", " ", ocr_text)
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
 
-    print(f"[OCR Parser] {len(lines)} lines")
-    for i, line in enumerate(lines[:30]):
-        print(f"  L{i:02d}: {line}")
+    print(f"[OCR] {len(lines)} lines received")
+    for i, l in enumerate(lines[:40]):
+        print(f"  [{i:02d}] {l}")
 
     # ── Patient name ──────────────────────────────────────────────────────
     for line in lines:
         m = re.search(
-            r"(?:Name|Patient|Customer)\s*[:\-\.]\s*([A-Za-z][A-Za-z\s]{1,20})",
+            r"(?:Patient\s*Name|Name)\s*[:\-\.]\s*([A-Za-z][A-Za-z\s]{1,20})",
             line, re.I
         )
         if m:
             name = m.group(1).strip()
             name = re.sub(
-                r"\s+(Mobile|Phone|Bill|Date|Ref|No|TID)\b.*",
+                r"\s+(Age|Gender|Cust|Mobile|Phone|Bill|Date|Ref)\b.*",
                 "", name, flags=re.I
             ).strip()
-            if 2 <= len(name) <= 20:
+            if 2 <= len(name) <= 20 and re.search(r"[A-Za-z]{2}", name):
                 data["patient_name"] = name
-                print(f"[OCR Parser] Patient: {name}")
+                print(f"[OCR] Patient: {name}")
                 break
 
-    # ── Bill number ───────────────────────────────────────────────────────
+    # ── Bill/Invoice number ───────────────────────────────────────────────
     for line in lines:
         m = re.search(
-            r"Bill\s*No\.?\s*[:\-]?\s*([A-Z0-9]{4,})",
+            r"(?:Bill|Invoice|Serial\s*Invoice)\s*No\.?\s*[:\-]?\s*"
+            r"([A-Z0-9]{6,})",
             line, re.I
         )
         if m:
-            data["invoice_no"] = m.group(1).strip()
+            data["invoice_no"] = m.group(1)
             break
 
-    # ── Bill date ─────────────────────────────────────────────────────────
+    # ── Date ─────────────────────────────────────────────────────────────
     for line in lines:
-        m = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", line)
-        if m:
-            data["bill_date"] = m.group(1)
-            break
         m = re.search(r"(\d{2}[-/]\d{2}[-/]\d{4})", line)
         if m:
             data["bill_date"] = m.group(1)
             break
+        m = re.search(r"(\d{4}[-/]\d{2}[-/]\d{2})", line)
+        if m:
+            data["bill_date"] = m.group(1)
+            break
 
-    # ── Drug extraction ───────────────────────────────────────────────────
+    # ── Drug extraction — tries 4 different strategies ────────────────────
+    drugs = _extract_drugs(lines)
+    data["drugs"] = drugs
+    print(f"[OCR] Total drugs: {len(drugs)}")
+    return data
+
+
+def _extract_drugs(lines):
+    """
+    Tries multiple extraction strategies in order of reliability.
+    Stops as soon as any strategy finds drugs.
+    """
     drugs = []
-    seen  = set()
 
-    # Lines to skip — these are headers/footers not medicines
-    SKIP_PATTERNS = [
-        r"QTY\s+ITEM", r"PRODUCT\s+NAME", r"HSN\s+CODE",
-        r"BATCH\s+NO", r"EXPIRY", r"TOTAL\s+AMOUNT",
-        r"TAXABLE", r"APOLLO\s+PHARM", r"REGISTERED\s+OFFICE",
-        r"DONATION", r"QR\s+CODE", r"GST\s+RATE",
-        r"SGST", r"CGST", r"THANK\s+YOU",
-        r"^\s*INVOICE\s*$",
-    ]
+    # Strategy 1: MedPlus format
+    # Line: "1 OKACET TAB 5 1.80 9.00"
+    # Starts with serial number, then drug name, then qty and price
+    drugs = _strategy_medplus(lines)
+    if drugs:
+        print(f"[OCR] Strategy 1 (MedPlus) found {len(drugs)}")
+        return drugs
 
-    # Dosage units — a line must have one of these to be a drug
-    DOSE_UNITS = r"(?:MG|MCG|ML|G|IU|MG/ML|MCG/ML)"
+    # Strategy 2: Apollo format
+    # Line: "15 DOLO 500MG TAB 15'S H 30049069 MIER BGA50375 2028-Nov H 0.94"
+    # Starts with qty, then drug name, then HSN code (8 digits)
+    drugs = _strategy_apollo(lines)
+    if drugs:
+        print(f"[OCR] Strategy 2 (Apollo) found {len(drugs)}")
+        return drugs
+
+    # Strategy 3: Any line with known drug form words
+    # Catches "OKACET TAB", "DOLO 500MG", "PARACIP 500MG TAB" etc
+    drugs = _strategy_form_words(lines)
+    if drugs:
+        print(f"[OCR] Strategy 3 (form words) found {len(drugs)}")
+        return drugs
+
+    # Strategy 4: Any line with dosage pattern (MG, ML, etc)
+    drugs = _strategy_dosage(lines)
+    if drugs:
+        print(f"[OCR] Strategy 4 (dosage) found {len(drugs)}")
+        return drugs
+
+    print("[OCR] All strategies failed — no drugs found")
+    return []
+
+
+SKIP_WORDS = [
+    "MEDPLUS", "APOLLO", "PHARMACY", "PHARMACIES",
+    "REGISTERED OFFICE", "ADMIN OFFICE", "GROUND FLOOR",
+    "TAX INVOICE", "RETAIL INVOICE", "SERIAL INVOICE",
+    "PATIENT NAME", "CUSTID", "DR.NAME", "DR NAME",
+    "SNO DESCRIPTION", "DESCRIPTION OF GOODS",
+    "HSN SCH BATCH", "EXP MRP", "TAXVAL CGST",
+    "MANUFACTURER", "TOTAL", "DISCOUNT", "NET TOTAL",
+    "AMOUNT SAVED", "PAYMENT", "NINE RUPEES", "RUPEES",
+    "SGST", "CGST", "CESS", "FSSAI", "GSTIN",
+    "STATE CODE", "STORE ID", "PHONE",
+    "INVOICE NO", "BILL NO", "DATE",
+    "INSULINS", "VACCINES", "GOODS ONCE SOLD",
+    "E & O.E", "FOR APOLLO", "FOR MEDPLUS",
+    "QTY ITEM NAME", "QTY  ITEM", "SNU DESCRIPTION",
+]
+
+
+def _should_skip(line):
+    lu = line.upper()
+    return any(skip in lu for skip in SKIP_WORDS)
+
+
+def _strategy_medplus(lines):
+    """
+    MedPlus format:
+    Line N:   '1 OKACET TAB 5 1.80 9.00'
+    Starts with a 1-2 digit serial number followed by drug name.
+    """
+    drugs = []
+    seen = set()
 
     for line in lines:
+        if _should_skip(line):
+            continue
+
+        # Must start with serial number (1-2 digits)
+        m = re.match(r"^(\d{1,2})\s+([A-Z][A-Z0-9\s\-\'\.]+)", line.upper())
+        if not m:
+            continue
+
+        serial = m.group(1)
+        rest = m.group(2).strip()
+
+        # Drug name must contain a known form word to be valid
+        FORMS = r"\b(TAB|CAP|SYP|INJ|GEL|CRM|CREAM|TABLET|CAPSULE|SYRUP|DROPS|OINT)\b"
+        if not re.search(FORMS, rest, re.I):
+            continue
+
+        # Extract drug name — up to the qty number
+        # e.g. "OKACET TAB 5 1.80 9.00" → drug = "OKACET TAB"
+        name_m = re.match(
+            r"([A-Z][A-Z0-9\s\-\'\.]*?"
+            r"(?:TAB|CAP|SYP|INJ|GEL|CREAM|TABLET|CAPSULE|SYRUP|DROPS|OINT))"
+            r"\s+(\d+)\s+(\d+\.\d{2})",
+            rest, re.I
+        )
+        if name_m:
+            drug_name = name_m.group(1).strip()
+            qty = name_m.group(2)
+            mrp = name_m.group(3)
+        else:
+            # Simpler: take everything before first standalone number
+            parts = re.split(r"\s+\d+\s+\d+\.\d{2}", rest)
+            drug_name = parts[0].strip()
+            qty = "N/A"
+            prices = re.findall(r"\d+\.\d{2}", line)
+            mrp = prices[0] if prices else "N/A"
+
+        drug_name = re.sub(r"\s+", " ", drug_name).strip()
+
+        if len(drug_name) > 2 and drug_name.lower() not in seen:
+            seen.add(drug_name.lower())
+            drugs.append({
+                "drug_name": drug_name,
+                "quantity": qty,
+                "price": mrp
+            })
+            print(f"[MedPlus] {drug_name} | {qty} | {mrp}")
+
+    return drugs
+
+
+def _strategy_apollo(lines):
+    """
+    Apollo format:
+    Line: '15 DOLO 500MG TAB 15'S H 30049069 MIER BGA50375 2028-Nov H 0.94'
+    Starts with qty, drug name contains dosage (500MG), followed by HSN code.
+    """
+    drugs = []
+    seen = set()
+
+    for line in lines:
+        if _should_skip(line):
+            continue
+
         lu = line.upper()
 
-        # Skip obvious non-drug lines
-        skip = False
-        for pat in SKIP_PATTERNS:
-            if re.search(pat, lu):
-                skip = True
-                break
-        if skip:
+        # Must have a dosage unit
+        if not re.search(r"\d+\s*(?:MG|MCG|ML|G|IU)\b", lu):
             continue
 
-        if len(line) < 6:
-            continue
+        m = re.match(r"^(\d{1,3})\s+(.+)", line.strip())
+        qty = "N/A"
+        rest = line.strip()
+        if m:
+            qty = m.group(1)
+            rest = m.group(2).strip()
 
-        # Must contain a dosage unit to be a medicine line
-        if not re.search(DOSE_UNITS, lu):
-            continue
-
-        # ── Strategy 1: Qty at start of line ─────────────────────────────
-        # Example: "10 PARACIP 500MG TAB 10'S H 30049069 CIPL..."
-        # or with OCR artifacts: "10 PARAC IP 500MG TAB 10 S..."
-        qty_match = re.match(r"^(\d{1,3})\s+(.+)", line.strip())
-        if qty_match:
-            qty  = qty_match.group(1)
-            rest = qty_match.group(2).strip()
-
-            # Find the drug name: starts at beginning,
-            # ends at first 8-digit HSN code or double space
-            # Try to find drug name ending at HSN code
-            drug_match = re.match(
-                r"(.+?\d+\.?\d*\s*(?:MG|MCG|ML|G|IU)"
-                r"(?:\s+[A-Z0-9\'\.]+){0,5}?)"
-                r"\s+(?:[A-Z]\s+)?\d{8}",
-                rest, re.I
+        # Find drug name — ends at HSN code (8 digits) or double space
+        drug_m = re.match(
+            r"([A-Z][A-Z0-9\s\-\'\.]+?\d+\.?\d*\s*(?:MG|MCG|ML|G|IU)"
+            r"(?:\s+[A-Z0-9\'\.]+){0,5}?)\s+(?:[A-Z]\s+)?\d{8}",
+            rest.upper()
+        )
+        if drug_m:
+            drug_name = drug_m.group(1).strip()
+        else:
+            parts = re.split(r"\s{2,}|\t", rest)
+            drug_name = parts[0].strip()
+            drug_name_m = re.match(
+                r"([A-Z][A-Z0-9\s\-\'\.]+?\d+\.?\d*\s*(?:MG|MCG|ML|G|IU)"
+                r"(?:\s+[A-Z0-9\'\.]+){0,4})",
+                drug_name.upper()
             )
-            if drug_match:
-                drug_name = drug_match.group(1).strip()
-            else:
-                # No HSN code found — take text up to first multi-space
-                parts = re.split(r"\s{2,}", rest)
-                drug_name = parts[0].strip()
+            if drug_name_m:
+                drug_name = drug_name_m.group(1).strip()
 
-            # Clean the drug name
-            drug_name = re.sub(r"\s+", " ", drug_name).strip()
+        drug_name = re.sub(r"\s+", " ", drug_name).strip()
 
-            # Must have letters and a dosage number
-            if (re.search(r"[A-Za-z]{2,}", drug_name) and
-                    re.search(DOSE_UNITS, drug_name, re.I) and
-                    len(drug_name) > 4):
-                drug_key = drug_name.lower()
-                if drug_key not in seen:
-                    seen.add(drug_key)
-                    # Find price (decimal numbers near end of line)
-                    prices = re.findall(r"\b\d+\.\d{2}\b", line)
-                    mrp = prices[0] if prices else "N/A"
-                    drugs.append({
-                        "drug_name": drug_name,
-                        "quantity":  qty,
-                        "price":     mrp
-                    })
-                    print(f"[OCR P1] {drug_name} | Qty:{qty} | MRP:{mrp}")
-                    continue
+        if not re.search(r"[A-Za-z]{2,}", drug_name):
+            continue
+        if not re.search(r"\d+\s*(?:MG|MCG|ML|G|IU)", drug_name, re.I):
+            continue
 
-        # ── Strategy 2: Find drug name anywhere in line ───────────────────
-        # For lines where qty might be missing or OCR merged it
-        drug_match = re.search(
-            r"([A-Z][A-Z]{2,}"           # starts with 3+ letters
-            r"(?:\s*[A-Z0-9\'\.]+){0,4}" # optional words/numbers
-            r"\s+\d+\.?\d*\s*"           # space + number
-            r"(?:MG|MCG|ML|G|IU)"        # dosage unit
-            r"(?:\s+[A-Z0-9\'\.]+){0,4})", # optional suffix like TAB 10'S
+        prices = re.findall(r"\b\d+\.\d{2}\b", line)
+        mrp = prices[0] if prices else "N/A"
+
+        if len(drug_name) > 3 and drug_name.lower() not in seen:
+            seen.add(drug_name.lower())
+            drugs.append({
+                "drug_name": drug_name,
+                "quantity": qty,
+                "price": mrp
+            })
+            print(f"[Apollo] {drug_name} | {qty} | {mrp}")
+
+    return drugs
+
+
+def _strategy_form_words(lines):
+    """
+    Finds lines containing drug form words: TAB, CAP, SYP, INJ etc.
+    Works when qty and dosage format is unknown.
+    """
+    drugs = []
+    seen = set()
+    FORMS = r"\b(TAB|CAP|SYP|INJ|GEL|OINT|CREAM|TABLET|CAPSULE|SYRUP)\b"
+
+    for line in lines:
+        if _should_skip(line):
+            continue
+        lu = line.upper()
+        if not re.search(FORMS, lu):
+            continue
+
+        m = re.search(
+            r"([A-Z][A-Z0-9\-\'\.]+(?:\s+[A-Z0-9\-\'\.]+){0,4}"
+            r"\s+(?:TAB|CAP|SYP|INJ|GEL|OINT|CREAM|TABLET|CAPSULE|SYRUP)"
+            r"(?:\s+[A-Z0-9\'\.]+){0,3})",
             lu
         )
-        if drug_match:
-            drug_name = drug_match.group(1).strip()
-            drug_name = re.sub(r"\s+", " ", drug_name).strip()
-
-            # Filter out false positives
-            FALSE_POSITIVES = [
-                "ITEM NAME", "HSN CODE", "APOLLO PHARM",
-                "MEDPLUS", "REGISTERED", "INVOICE"
-            ]
-            if any(fp in drug_name for fp in FALSE_POSITIVES):
+        if m:
+            drug_name = re.sub(r"\s+", " ", m.group(1)).strip()
+            FALSE_POS = ["ITEM NAME", "DESCRIPTION", "APOLLO PHARM",
+                         "MEDPLUS", "REGISTERED", "INVOICE"]
+            if any(fp in drug_name for fp in FALSE_POS):
                 continue
+            if len(drug_name) > 3 and drug_name.lower() not in seen:
+                seen.add(drug_name.lower())
+                qty_m = re.match(r"^(\d{1,3})\s", line.strip())
+                qty = qty_m.group(1) if qty_m else "N/A"
+                prices = re.findall(r"\b\d+\.\d{2}\b", line)
+                mrp = prices[0] if prices else "N/A"
+                drugs.append({
+                    "drug_name": drug_name.title(),
+                    "quantity": qty,
+                    "price": mrp
+                })
+                print(f"[Forms] {drug_name} | {qty} | {mrp}")
 
-            if (len(drug_name) > 4 and
-                    drug_name.lower() not in seen):
+    return drugs
+
+
+def _strategy_dosage(lines):
+    """
+    Last resort: any line with a dosage number (500MG, 10ML etc).
+    """
+    drugs = []
+    seen = set()
+
+    for line in lines:
+        if _should_skip(line):
+            continue
+        lu = line.upper()
+        if not re.search(r"\d+\s*(?:MG|MCG|ML|G|IU)\b", lu):
+            continue
+
+        m = re.search(
+            r"([A-Z][A-Z]{2,}(?:\s+[A-Z0-9\'\.]+){0,3}"
+            r"\s+\d+\.?\d*\s*(?:MG|MCG|ML|G|IU)"
+            r"(?:\s+[A-Z0-9\'\.]+){0,3})",
+            lu
+        )
+        if m:
+            drug_name = re.sub(r"\s+", " ", m.group(1)).strip()
+            if len(drug_name) > 4 and drug_name.lower() not in seen:
                 seen.add(drug_name.lower())
                 prices = re.findall(r"\b\d+\.\d{2}\b", line)
                 mrp = prices[0] if prices else "N/A"
@@ -188,31 +345,9 @@ def parse_bill_from_text(ocr_text):
                 qty = qty_m.group(1) if qty_m else "N/A"
                 drugs.append({
                     "drug_name": drug_name.title(),
-                    "quantity":  qty,
-                    "price":     mrp
+                    "quantity": qty,
+                    "price": mrp
                 })
-                print(f"[OCR P2] {drug_name} | Qty:{qty} | MRP:{mrp}")
+                print(f"[Dosage] {drug_name} | {qty} | {mrp}")
 
-    # ── Fallback: very broad search ───────────────────────────────────────
-    if not drugs:
-        print("[OCR Parser] Using broad fallback...")
-        broad = re.compile(
-            r"\b([A-Z]{3,}\s+\d+\s*(?:MG|MCG|ML|G|IU)"
-            r"(?:\s+[A-Z0-9]{2,}){0,4})\b",
-            re.I
-        )
-        for line in lines:
-            for m in broad.finditer(line.upper()):
-                name = re.sub(r"\s+", " ", m.group(1)).strip()
-                if (name.lower() not in seen and len(name) > 4):
-                    seen.add(name.lower())
-                    drugs.append({
-                        "drug_name": name.title(),
-                        "quantity":  "N/A",
-                        "price":     "N/A"
-                    })
-                    print(f"[OCR Fallback] {name}")
-
-    data["drugs"] = drugs
-    print(f"[OCR Parser] Total: {len(drugs)} drug(s)")
-    return data
+    return drugs

@@ -3,67 +3,273 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PVPro — Naranjo Calculator</title>
+  <title>PVPro — Causality Assessment</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: #0D1B2A; color: #E8F4FD; padding: 28px 20px; }
-    .logo { font-size: 11px; letter-spacing: 5px; color: #4FC3F7; margin-bottom: 24px; }
+    body { font-family: 'Segoe UI', sans-serif;
+           background: #0D1B2A; color: #E8F4FD;
+           min-height: 100vh; padding: 28px 20px; }
+    .logo { font-size: 11px; letter-spacing: 5px;
+            color: #4FC3F7; margin-bottom: 24px; }
     h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-    .sub { color: #90CAF9; font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
-    .q-card { background: #1A2A3A; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-    .q-text { font-size: 14px; margin-bottom: 10px; font-weight: 500; }
-    .q-num  { color: #4FC3F7; margin-right: 8px; }
+    .sub { color: #90CAF9; font-size: 14px;
+           margin-bottom: 28px; line-height: 1.6; }
+    .back { color: #4FC3F7; font-size: 13px;
+            text-decoration: none; display: block; margin-bottom: 20px; }
+
+    /* Result card */
+    .result-card {
+      background: #1A2A3A; border-radius: 14px; padding: 24px;
+      text-align: center; margin-bottom: 28px;
+    }
+    .score-num { font-size: 56px; font-weight: 700; color: #4FC3F7; }
+    .score-cat { font-size: 22px; font-weight: 600; margin-top: 6px; }
+    .Definite  { color: #EF5350; }
+    .Probable  { color: #FFA726; }
+    .Possible  { color: #FFEE58; }
+    .Doubtful  { color: #66BB6A; }
+    .score-guide {
+      font-size: 12px; color: #546E7A; margin-top: 10px;
+    }
+    .score-meaning {
+      background: #0D1B2A; border-radius: 10px; padding: 14px;
+      margin-top: 14px; font-size: 13px; color: #B0BEC5;
+      line-height: 1.6; text-align: left;
+    }
+
+    /* Question cards */
+    .q-card {
+      background: #1A2A3A; border-radius: 12px; padding: 16px;
+      margin-bottom: 14px;
+    }
+    .q-number {
+      font-size: 11px; letter-spacing: 1px; color: #546E7A;
+      margin-bottom: 6px;
+    }
+    .q-text {
+      font-size: 15px; font-weight: 600; margin-bottom: 6px;
+    }
+    .q-hint {
+      font-size: 12px; color: #546E7A; margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
     .opts { display: flex; gap: 8px; }
-    .opt { flex: 1; text-align: center; padding: 10px; background: #0D1B2A;
-           border: 1px solid #1E3A5F; border-radius: 8px; font-size: 13px; color: #90CAF9; cursor: pointer; }
     input[type=radio] { display: none; }
-    input[type=radio]:checked + label { background: #1565C0; border-color: #1565C0; color: #fff; }
-    label { display: block; padding: 10px; background: #0D1B2A; border: 1px solid #1E3A5F;
-            border-radius: 8px; font-size: 13px; color: #90CAF9; cursor: pointer; text-align: center; flex: 1; }
+    label {
+      flex: 1; text-align: center; padding: 10px 6px;
+      background: #0D1B2A; border: 1px solid #1E3A5F;
+      border-radius: 8px; font-size: 13px; color: #90CAF9;
+      cursor: pointer; transition: all 0.15s;
+    }
+    input[type=radio]:checked + label {
+      background: #1565C0; border-color: #1565C0; color: #fff;
+    }
     label:hover { border-color: #1565C0; color: #4FC3F7; }
-    button { width: 100%; padding: 16px; background: #1565C0; color: #fff; border: none;
-             border-radius: 12px; font-size: 16px; font-weight: 600; margin-top: 24px; cursor: pointer; }
-    .result { background: #1A2A3A; border-radius: 14px; padding: 24px; text-align: center; margin-bottom: 24px; }
-    .score  { font-size: 48px; font-weight: 700; color: #4FC3F7; }
-    .cat    { font-size: 20px; font-weight: 600; margin-top: 8px; }
-    .cat.Definite  { color: #EF5350; }
-    .cat.Probable  { color: #FFA726; }
-    .cat.Possible  { color: #FFEE58; }
-    .cat.Doubtful  { color: #66BB6A; }
-    .back { color: #4FC3F7; font-size: 13px; text-decoration: none; display: block; margin-bottom: 20px; }
+
+    .score-label {
+      font-size: 10px; color: #546E7A;
+      display: block; margin-top: 2px;
+    }
+
+    button {
+      width: 100%; padding: 16px; background: #1565C0;
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 600;
+      margin-top: 8px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div class="logo">PVPRO</div>
   <a href="/" class="back">← Dashboard</a>
-  <h2>Naranjo Scale Calculator</h2>
-  <p class="sub">Answer all 10 questions to calculate the ADR causality score.</p>
+
+  <h2>Was the medicine responsible?</h2>
+  <p class="sub">
+    Answer these simple questions about your side effect experience.
+    This helps assess if the medicine likely caused your reaction.
+  </p>
 
   {% if result %}
-  <div class="result">
-    <div class="score">{{ result.score }}</div>
-    <div class="cat {{ result.category }}">{{ result.category }}</div>
-    <p style="color:#90CAF9;font-size:13px;margin-top:12px;">
-      Definite ≥9 | Probable 5–8 | Possible 1–4 | Doubtful ≤0
-    </p>
+  <div class="result-card">
+    <div class="score-num">{{ result.score }}</div>
+    <div class="score-cat {{ result.category }}">{{ result.category }}</div>
+    <div class="score-guide">
+      Definite ≥9 &nbsp;|&nbsp; Probable 5–8 &nbsp;|&nbsp;
+      Possible 1–4 &nbsp;|&nbsp; Doubtful ≤0
+    </div>
+    <div class="score-meaning">
+      {% if result.category == "Definite" %}
+        <strong>Definite:</strong> The medicine almost certainly caused this reaction.
+        This should be reported to your doctor and the pharmacy.
+      {% elif result.category == "Probable" %}
+        <strong>Probable:</strong> The medicine is very likely the cause.
+        Please inform your doctor and avoid reusing this medicine.
+      {% elif result.category == "Possible" %}
+        <strong>Possible:</strong> The medicine may have caused this reaction,
+        but other causes cannot be ruled out. Mention this to your doctor.
+      {% else %}
+        <strong>Doubtful:</strong> The medicine is unlikely to be the cause.
+        The reaction may be due to another reason.
+      {% endif %}
+    </div>
   </div>
   {% endif %}
 
   <form method="POST">
-    {% for q_id, question, yes_s, no_s, unk_s in questions %}
+
+    <!-- Q1 -->
     <div class="q-card">
-      <div class="q-text"><span class="q-num">{{ q_id }}</span>{{ question }}</div>
+      <div class="q-number">QUESTION 1 OF 10</div>
+      <div class="q-text">Has this same reaction to this medicine been reported before?</div>
+      <div class="q-hint">Example: Is it written in the medicine leaflet or known by doctors?</div>
       <div class="opts">
-        <input type="radio" name="{{ q_id }}" id="{{ q_id }}_yes" value="yes">
-        <label for="{{ q_id }}_yes">Yes ({{ yes_s if yes_s > 0 else yes_s }})</label>
-        <input type="radio" name="{{ q_id }}" id="{{ q_id }}_no" value="no">
-        <label for="{{ q_id }}_no">No ({{ no_s if no_s > 0 else no_s }})</label>
-        <input type="radio" name="{{ q_id }}" id="{{ q_id }}_unknown" value="unknown" checked>
-        <label for="{{ q_id }}_unknown">Unknown (0)</label>
+        <span><input type="radio" name="Q1" id="Q1_yes" value="yes">
+          <label for="Q1_yes">Yes<span class="score-label">(+1)</span></label></span>
+        <span><input type="radio" name="Q1" id="Q1_no" value="no">
+          <label for="Q1_no">No<span class="score-label">(0)</span></label></span>
+        <span><input type="radio" name="Q1" id="Q1_unknown" value="unknown" checked>
+          <label for="Q1_unknown">Not sure<span class="score-label">(0)</span></label></span>
       </div>
     </div>
-    {% endfor %}
+
+    <!-- Q2 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 2 OF 10</div>
+      <div class="q-text">Did the reaction start AFTER you started taking this medicine?</div>
+      <div class="q-hint">The side effect appeared only after you began using this medicine — not before.</div>
+      <div class="opts">
+        <span><input type="radio" name="Q2" id="Q2_yes" value="yes">
+          <label for="Q2_yes">Yes<span class="score-label">(+2)</span></label></span>
+        <span><input type="radio" name="Q2" id="Q2_no" value="no">
+          <label for="Q2_no">No<span class="score-label">(-1)</span></label></span>
+        <span><input type="radio" name="Q2" id="Q2_unknown" value="unknown" checked>
+          <label for="Q2_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 3 OF 10</div>
+      <div class="q-text">Did the reaction improve or go away when you stopped the medicine?</div>
+      <div class="q-hint">After stopping or reducing the medicine, the side effect got better or disappeared.</div>
+      <div class="opts">
+        <span><input type="radio" name="Q3" id="Q3_yes" value="yes">
+          <label for="Q3_yes">Yes<span class="score-label">(+1)</span></label></span>
+        <span><input type="radio" name="Q3" id="Q3_no" value="no">
+          <label for="Q3_no">No<span class="score-label">(0)</span></label></span>
+        <span><input type="radio" name="Q3" id="Q3_unknown" value="unknown" checked>
+          <label for="Q3_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 4 OF 10</div>
+      <div class="q-text">Did the same reaction come back when you used this medicine again?</div>
+      <div class="q-hint">You stopped, got better, then restarted the medicine — and the same problem returned.</div>
+      <div class="opts">
+        <span><input type="radio" name="Q4" id="Q4_yes" value="yes">
+          <label for="Q4_yes">Yes<span class="score-label">(+2)</span></label></span>
+        <span><input type="radio" name="Q4" id="Q4_no" value="no">
+          <label for="Q4_no">No<span class="score-label">(-1)</span></label></span>
+        <span><input type="radio" name="Q4" id="Q4_unknown" value="unknown" checked>
+          <label for="Q4_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 5 OF 10</div>
+      <div class="q-text">Could something else have caused this reaction?</div>
+      <div class="q-hint">Another medicine, food, illness, or condition could also explain the side effect.</div>
+      <div class="opts">
+        <span><input type="radio" name="Q5" id="Q5_yes" value="yes">
+          <label for="Q5_yes">Yes<span class="score-label">(-1)</span></label></span>
+        <span><input type="radio" name="Q5" id="Q5_no" value="no">
+          <label for="Q5_no">No<span class="score-label">(+2)</span></label></span>
+        <span><input type="radio" name="Q5" id="Q5_unknown" value="unknown" checked>
+          <label for="Q5_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 6 OF 10</div>
+      <div class="q-text">Did you experience the same problem when you took a sugar pill (placebo)?</div>
+      <div class="q-hint">Most people can answer "Not sure" here — this is mainly for clinical trials.</div>
+      <div class="opts">
+        <span><input type="radio" name="Q6" id="Q6_yes" value="yes">
+          <label for="Q6_yes">Yes<span class="score-label">(-1)</span></label></span>
+        <span><input type="radio" name="Q6" id="Q6_no" value="no">
+          <label for="Q6_no">No<span class="score-label">(+1)</span></label></span>
+        <span><input type="radio" name="Q6" id="Q6_unknown" value="unknown" checked>
+          <label for="Q6_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q7 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 7 OF 10</div>
+      <div class="q-text">Was this medicine found in harmful amounts in a blood or urine test?</div>
+      <div class="q-hint">A lab test showed the medicine level in your blood was too high (toxic level).</div>
+      <div class="opts">
+        <span><input type="radio" name="Q7" id="Q7_yes" value="yes">
+          <label for="Q7_yes">Yes<span class="score-label">(+1)</span></label></span>
+        <span><input type="radio" name="Q7" id="Q7_no" value="no">
+          <label for="Q7_no">No<span class="score-label">(0)</span></label></span>
+        <span><input type="radio" name="Q7" id="Q7_unknown" value="unknown" checked>
+          <label for="Q7_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q8 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 8 OF 10</div>
+      <div class="q-text">Did the reaction get worse when you took a higher dose?</div>
+      <div class="q-hint">When the dose was increased, the side effect also became more severe.</div>
+      <div class="opts">
+        <span><input type="radio" name="Q8" id="Q8_yes" value="yes">
+          <label for="Q8_yes">Yes<span class="score-label">(+1)</span></label></span>
+        <span><input type="radio" name="Q8" id="Q8_no" value="no">
+          <label for="Q8_no">No<span class="score-label">(0)</span></label></span>
+        <span><input type="radio" name="Q8" id="Q8_unknown" value="unknown" checked>
+          <label for="Q8_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q9 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 9 OF 10</div>
+      <div class="q-text">Have you had this same reaction to the same or a similar medicine before?</div>
+      <div class="q-hint">In a previous prescription of this medicine or a similar type, you had the same problem.</div>
+      <div class="opts">
+        <span><input type="radio" name="Q9" id="Q9_yes" value="yes">
+          <label for="Q9_yes">Yes<span class="score-label">(+1)</span></label></span>
+        <span><input type="radio" name="Q9" id="Q9_no" value="no">
+          <label for="Q9_no">No<span class="score-label">(0)</span></label></span>
+        <span><input type="radio" name="Q9" id="Q9_unknown" value="unknown" checked>
+          <label for="Q9_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
+    <!-- Q10 -->
+    <div class="q-card">
+      <div class="q-number">QUESTION 10 OF 10</div>
+      <div class="q-text">Was the side effect confirmed by a doctor, test, or clear physical sign?</div>
+      <div class="q-hint">A doctor examined you, or a test / photo / measurement confirmed the reaction (e.g. rash seen, fever measured, swelling observed).</div>
+      <div class="opts">
+        <span><input type="radio" name="Q10" id="Q10_yes" value="yes">
+          <label for="Q10_yes">Yes<span class="score-label">(+1)</span></label></span>
+        <span><input type="radio" name="Q10" id="Q10_no" value="no">
+          <label for="Q10_no">No<span class="score-label">(0)</span></label></span>
+        <span><input type="radio" name="Q10" id="Q10_unknown" value="unknown" checked>
+          <label for="Q10_unknown">Not sure<span class="score-label">(0)</span></label></span>
+      </div>
+    </div>
+
     <button type="submit">Calculate Score →</button>
+
   </form>
 </body>
 </html>
