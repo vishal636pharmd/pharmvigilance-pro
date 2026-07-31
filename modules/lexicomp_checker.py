@@ -17,39 +17,251 @@ _fda_label_cache = {}
 # ── Indian brand name → FDA generic name mapping ─────────────────────────────
 # OpenFDA uses US/international names. Indian brands are mapped here.
 INDIAN_BRAND_TO_GENERIC = {
-    "limcee":        "ascorbic acid",
+    # ── Paracetamol / Acetaminophen ───────────────────────────────────────
     "crocin":        "acetaminophen",
+    "calpol":        "acetaminophen",
     "paracip":       "acetaminophen",
     "dolo":          "acetaminophen",
-    "calpol":        "acetaminophen",
-    "combiflam":     "ibuprofen",
+    "pacimol":       "acetaminophen",
+    "fepanil":       "acetaminophen",
+    "metacin":       "acetaminophen",
+    "pyrigesic":     "acetaminophen",
+    "sumo":          "acetaminophen",
+    "p 500":         "acetaminophen",
+
+    # ── Ibuprofen ─────────────────────────────────────────────────────────
     "brufen":        "ibuprofen",
+    "combiflam":     "ibuprofen",
+    "ibugesic":      "ibuprofen",
+    "emflam":        "ibuprofen",
+    "fenlong":       "ibuprofen",
+    "advil":         "ibuprofen",
+
+    # ── Cetirizine ────────────────────────────────────────────────────────
+    "okacet":        "cetirizine",
+    "cetriz":        "cetirizine",
+    "alerid":        "cetirizine",
+    "cetzine":       "cetirizine",
+    "zyrtec":        "cetirizine",
+    "reactine":      "cetirizine",
+
+    # ── Levocetirizine ────────────────────────────────────────────────────
+    "levocet":       "levocetirizine",
+    "xyzal":         "levocetirizine",
+    "lezyncet":      "levocetirizine",
+
+    # ── Fexofenadine ─────────────────────────────────────────────────────
+    "allegra":       "fexofenadine",
+    "telfast":       "fexofenadine",
+
+    # ── Montelukast ───────────────────────────────────────────────────────
+    "montair":       "montelukast",
+    "singulair":     "montelukast",
+    "montek":        "montelukast",
+
+    # ── Omeprazole ────────────────────────────────────────────────────────
+    "omez":          "omeprazole",
+    "prilosec":      "omeprazole",
+    "omecip":        "omeprazole",
+    "ocid":          "omeprazole",
+
+    # ── Pantoprazole ─────────────────────────────────────────────────────
     "pan":           "pantoprazole",
     "pantop":        "pantoprazole",
-    "omez":          "omeprazole",
+    "pantocid":      "pantoprazole",
+    "protonix":      "pantoprazole",
+    "nupenta":       "pantoprazole",
+
+    # ── Rabeprazole ───────────────────────────────────────────────────────
+    "razo":          "rabeprazole",
+    "rablet":        "rabeprazole",
+    "pariet":        "rabeprazole",
+
+    # ── Ranitidine ────────────────────────────────────────────────────────
+    "rantac":        "ranitidine",
+    "zinetac":       "ranitidine",
+    "aciloc":        "ranitidine",
+
+    # ── Metformin ─────────────────────────────────────────────────────────
     "glycomet":      "metformin",
     "glucophage":    "metformin",
+    "obimet":        "metformin",
+    "gluformin":     "metformin",
+    "prometil":      "metformin",
+
+    # ── Glimepiride ───────────────────────────────────────────────────────
+    "amaryl":        "glimepiride",
+    "glimer":        "glimepiride",
+    "glimy":         "glimepiride",
+
+    # ── Metoprolol ────────────────────────────────────────────────────────
+    "metpure":       "metoprolol",
+    "betaloc":       "metoprolol",
+    "lopressor":     "metoprolol",
+    "metolar":       "metoprolol",
+
+    # ── Amlodipine ────────────────────────────────────────────────────────
     "amlip":         "amlodipine",
     "amlong":        "amlodipine",
     "norvasc":       "amlodipine",
+    "stamlo":        "amlodipine",
+    "amcard":        "amlodipine",
+
+    # ── Atorvastatin ─────────────────────────────────────────────────────
+    "atorva":        "atorvastatin",
+    "storvas":       "atorvastatin",
+    "lipitor":       "atorvastatin",
+    "atorfit":       "atorvastatin",
+    "tonact":        "atorvastatin",
+
+    # ── Rosuvastatin ─────────────────────────────────────────────────────
+    "rozat":         "rosuvastatin",
+    "crestor":       "rosuvastatin",
+    "rosuvas":       "rosuvastatin",
+    "rozucor":       "rosuvastatin",
+
+    # ── Telmisartan ──────────────────────────────────────────────────────
+    "telma":         "telmisartan",
+    "micardis":      "telmisartan",
+    "telmikind":     "telmisartan",
+
+    # ── Losartan ─────────────────────────────────────────────────────────
+    "losar":         "losartan",
+    "cozaar":        "losartan",
+    "repace":        "losartan",
+
+    # ── Ramipril ─────────────────────────────────────────────────────────
+    "cardace":       "ramipril",
+    "altace":        "ramipril",
+    "ramistar":      "ramipril",
+
+    # ── Azithromycin ─────────────────────────────────────────────────────
     "azithral":      "azithromycin",
     "zithromax":     "azithromycin",
+    "azicip":        "azithromycin",
+    "azee":          "azithromycin",
+    "z pak":         "azithromycin",
+
+    # ── Amoxicillin ───────────────────────────────────────────────────────
     "mox":           "amoxicillin",
     "amoxil":        "amoxicillin",
-    "allegra":       "fexofenadine",
-    "cetriz":        "cetirizine",
-    "okacet":        "cetirizine",
-    "montair":       "montelukast",
-    "sinarest":      "chlorpheniramine",
-    "avomine":       "promethazine",
+    "novamox":       "amoxicillin",
+    "trimox":        "amoxicillin",
+
+    # ── Ciprofloxacin ─────────────────────────────────────────────────────
+    "ciplox":        "ciprofloxacin",
+    "cipro":         "ciprofloxacin",
+    "cifran":        "ciprofloxacin",
+
+    # ── Doxycycline ──────────────────────────────────────────────────────
+    "doxt":          "doxycycline",
+    "vibramycin":    "doxycycline",
+    "doxrid":        "doxycycline",
+
+    # ── Vitamin C / Ascorbic Acid ─────────────────────────────────────────
+    "limcee":        "ascorbic acid",
+    "celin":         "ascorbic acid",
     "vitamin c":     "ascorbic acid",
     "vit c":         "ascorbic acid",
+
+    # ── Vitamin B Complex ─────────────────────────────────────────────────
     "becosules":     "vitamin b",
-    "storvas":       "atorvastatin",
-    "atorva":        "atorvastatin",
-    "telma":         "telmisartan",
-    "metpure":       "metoprolol",
-    "rantac":        "ranitidine",
+    "neurobion":     "vitamin b",
+    "polybion":      "vitamin b",
+    "bcomplex":      "vitamin b",
+
+    # ── Vitamin D ─────────────────────────────────────────────────────────
+    "calcirol":      "cholecalciferol",
+    "cholecalciferol": "cholecalciferol",
+    "uprise":        "cholecalciferol",
+    "d rise":        "cholecalciferol",
+    "d3 must":       "cholecalciferol",
+
+    # ── Calcium ───────────────────────────────────────────────────────────
+    "shelcal":       "calcium carbonate",
+    "calcimax":      "calcium carbonate",
+    "gemcal":        "calcium carbonate",
+
+    # ── Iron supplements ──────────────────────────────────────────────────
+    "autrin":        "ferrous sulfate",
+    "fefol":         "ferrous sulfate",
+    "orofer":        "iron sucrose",
+
+    # ── Pregabalin ────────────────────────────────────────────────────────
+    "lyrica":        "pregabalin",
+    "pregabalin":    "pregabalin",
+    "pregalin":      "pregabalin",
+
+    # ── Gabapentin ────────────────────────────────────────────────────────
+    "gabapin":       "gabapentin",
+    "neurontin":     "gabapentin",
+
+    # ── Diclofenac ────────────────────────────────────────────────────────
+    "voveran":       "diclofenac",
+    "voltaren":      "diclofenac",
+    "diclofen":      "diclofenac",
+
+    # ── Tramadol ─────────────────────────────────────────────────────────
+    "ultracet":      "tramadol",
+    "tramazac":      "tramadol",
+
+    # ── Domperidone ───────────────────────────────────────────────────────
+    "domstal":       "domperidone",
+    "vomistop":      "domperidone",
+    "motilium":      "domperidone",
+
+    # ── Ondansetron ───────────────────────────────────────────────────────
+    "emeset":        "ondansetron",
+    "zofran":        "ondansetron",
+    "ondem":         "ondansetron",
+
+    # ── Metoclopramide ────────────────────────────────────────────────────
+    "perinorm":      "metoclopramide",
+    "reglan":        "metoclopramide",
+
+    # ── Clonazepam ────────────────────────────────────────────────────────
+    "rivotril":      "clonazepam",
+    "lonazep":       "clonazepam",
+
+    # ── Alprazolam ────────────────────────────────────────────────────────
+    "alprax":        "alprazolam",
+    "xanax":         "alprazolam",
+    "alzolam":       "alprazolam",
+
+    # ── Sertraline ────────────────────────────────────────────────────────
+    "serta":         "sertraline",
+    "zoloft":        "sertraline",
+    "serenata":      "sertraline",
+
+    # ── Fluoxetine ────────────────────────────────────────────────────────
+    "prozac":        "fluoxetine",
+    "fludac":        "fluoxetine",
+    "flutop":        "fluoxetine",
+
+    # ── Metronidazole ─────────────────────────────────────────────────────
+    "flagyl":        "metronidazole",
+    "metrogyl":      "metronidazole",
+    "aristogyl":     "metronidazole",
+
+    # ── Fluconazole ───────────────────────────────────────────────────────
+    "forcan":        "fluconazole",
+    "diflucan":      "fluconazole",
+    "zocon":         "fluconazole",
+
+    # ── Salbutamol ────────────────────────────────────────────────────────
+    "asthalin":      "salbutamol",
+    "ventolin":      "salbutamol",
+    "salbair":       "salbutamol",
+
+    # ── Levothyroxine ─────────────────────────────────────────────────────
+    "thyronorm":     "levothyroxine",
+    "eltroxin":      "levothyroxine",
+    "synthroid":     "levothyroxine",
+
+    # ── Aspirin ───────────────────────────────────────────────────────────
+    "disprin":       "aspirin",
+    "ecosprin":      "aspirin",
+    "loprin":        "aspirin",
 }
 
 
