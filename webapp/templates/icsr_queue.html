@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PVPro — Safety Reports</title>
   <style>
+    .btn-submit { background: #1B5E20; color: #A5D6A7;
+              border: 1px solid #2E7D32; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif;
            background: #0D1B2A; color: #E8F4FD;
@@ -174,14 +176,16 @@
       </div>
 
       {% if 'unknown' in item.check_result %}
-      <div class="btn-row">
-        <a href="/icsr/download/pdf/{{ item.report_id }}"
-           class="btn btn-pdf">📄 CIOMS I PDF</a>
-        <a href="/icsr/download/xml/{{ item.report_id }}"
-           class="btn btn-xml">💾 E2B XML (VigiFlow)</a>
-        <a href="/check-adr/{{ item.report_id }}"
-           class="btn btn-rerun">🔄 Re-run Check</a>
-      </div>
+<div class="btn-row">
+  <a href="/icsr/download/pdf/{{ item.report_id }}"
+     class="btn btn-pdf">📄 CIOMS PDF</a>
+  <a href="/icsr/download/xml/{{ item.report_id }}"
+     class="btn btn-xml">💾 E2B XML</a>
+  <a href="/icsr/submit-email/{{ item.report_id }}"
+     class="btn btn-submit">📧 Submit to PvPI</a>
+  <a href="/check-adr/{{ item.report_id }}"
+     class="btn btn-rerun">🔄 Re-check</a>
+</div>
       {% else %}
       <div class="known-note">
         ✓ This reaction is documented in the FDA label

@@ -24,7 +24,9 @@ from modules.report_generator   import generate_report
 from modules.ocr_scanner        import extract_text_from_image, parse_bill_from_text
 
 app = Flask(__name__)
-app.secret_key = "pvpro_secure_key_2026"
+app.secret_key = "pvpro_secure_key_2026_permanent"
+from datetime import timedelta
+app.permanent_session_lifetime = timedelta(days=30)
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -57,6 +59,7 @@ print("[PVPro] All systems ready.")
 # ── HOME ──────────────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
+    session.permanent = True      # ← add this line
     if "patient_id" in session:
         profile = get_profile_by_id(session["patient_id"])
         if profile:
@@ -93,6 +96,7 @@ def signup():
 
     pid = create_or_get_profile(full_name, age_int, gender, phone)
     session["patient_id"] = pid
+    session.permanent = True          # ← add this line
 
     redirect_target = session.pop("redirect_after_signup", None)
     if redirect_target:
@@ -648,7 +652,79 @@ def paste_bill_text():
                                bill_date=extracted.get("bill_date", "N/A"))
 
     return render_template("paste_bill_text.html", error=None)
+@app.route("/icsr/submit-email/<int:report_id>")
+def icsr_submit_email(report_id):
+    """
+    Manually triggers email submission to PvPI for a specific report.
+    Sends CIOMS PDF + E2B XML to pvpi@cdsco.nic.in and your Gmail.
+    """
+    if "patient_id" not in session:
+        return redirect(url_for("index"))
 
+    try:
+        from modules.icsr_generator import generate_cioms_pdf, generate_e2b_xml
+        from modules.auto_icsr_pipeline import _send_icsr_email, YOUR_EMAIL
+
+        # Generate both files
+        pdf_path, pdf_err = generate_cioms_pdf(report_id)
+        xml_path, xml_err = generate_e2b_xml(report_id)
+
+        if pdf_err and xml_err:
+            return jsonify({"error": "Could not generate report files",
+                            "pdf_error": pdf_err, "xml_error": xml_err})
+
+        # Get drug and meddra info for this report
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""SELECT drug_name, meddra_pt FROM symptom_reports
+                     WHERE report_id=?""", (report_id,))
+        row = c.fetchone()
+        conn.close()
+
+        drug_name = row[0] if row else "Unknown Drug"
+        meddra_pt = row[1] if row else "Unknown ADR"
+
+        if not YOUR_EMAIL:
+            return jsonify({
+                "status": "email_not_configured",
+                "message": "Set YOUR_EMAIL in auto_icsr_pipeline.py first",
+                "files_generated": {
+                    "pdf": pdf_path if not pdf_err else None,
+                    "xml": xml_path if not xml_err else None
+                }
+            })
+
+        # Send the email
+        sent = _send_icsr_email(
+            drug_name, meddra_pt, report_id, 0, "Possible",
+            pdf_path if not pdf_err else None,
+            xml_path if not xml_err else None
+        )
+
+        if sent:
+            # Update queue status
+            from modules.auto_icsr_pipeline import _update_icsr_queue
+            _update_icsr_queue(report_id, drug_name, meddra_pt,
+                               "unknown_in_fda_label",
+                               "Submitted_to_PvPI",
+                               pdf_path if not pdf_err else None,
+                               xml_path if not xml_err else None)
+
+            return render_template("submission_success.html",
+                                   report_id=report_id,
+                                   drug_name=drug_name,
+                                   meddra_pt=meddra_pt)
+        else:
+            return jsonify({
+                "status": "email_failed",
+                "message": "Email sending failed. Check Gmail App Password in auto_icsr_pipeline.py",
+                "files_ready": True,
+                "download_pdf": f"/icsr/download/pdf/{report_id}",
+                "download_xml": f"/icsr/download/xml/{report_id}"
+            })
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
 if __name__ == "__main__":
     print("=" * 50)
     print("  PharmVigilance Pro (PVPro)")

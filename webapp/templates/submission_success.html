@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Report Submitted</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif; background: #0D1B2A;
+      color: #E8F4FD; min-height: 100vh; padding: 40px 20px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+    }
+    .icon { font-size: 64px; margin-bottom: 24px; }
+    h2 { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
+    .sub { color: #90CAF9; font-size: 15px;
+           margin-bottom: 32px; line-height: 1.7; max-width: 340px; }
+
+    .detail-card {
+      background: #1A2A3A; border-radius: 12px; padding: 16px 20px;
+      width: 100%; max-width: 360px; text-align: left; margin-bottom: 24px;
+    }
+    .detail-row { display: flex; justify-content: space-between;
+                  margin-bottom: 10px; font-size: 14px; }
+    .detail-label { color: #546E7A; font-size: 12px;
+                    letter-spacing: 0.5px; }
+    .detail-value { color: #E8F4FD; font-weight: 600; }
+
+    .info-box {
+      background: #2E7D3210; border: 1px solid #2E7D32;
+      border-radius: 12px; padding: 16px; font-size: 13px;
+      color: #81C784; line-height: 1.7;
+      max-width: 360px; margin-bottom: 24px; text-align: left;
+    }
+    .info-box strong { color: #A5D6A7; display: block;
+                       margin-bottom: 6px; }
+
+    .btn {
+      display: block; width: 100%; max-width: 360px; padding: 16px;
+      background: #1565C0; color: #fff; border: none;
+      border-radius: 12px; font-size: 16px; font-weight: 600;
+      text-align: center; text-decoration: none;
+    }
+    .btn-secondary {
+      background: transparent; border: 1px solid #1E3A5F;
+      color: #90CAF9; margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="icon">✅</div>
+  <h2>Report Submitted to PvPI</h2>
+  <p class="sub">
+    Your ICSR report has been emailed to the Pharmacovigilance
+    Programme of India at pvpi@cdsco.nic.in
+  </p>
+
+  <div class="detail-card">
+    <div class="detail-label">REPORT REFERENCE</div>
+    <div class="detail-value" style="margin-bottom:12px;">
+      PVPRO-{{ "%04d"|format(report_id) }}
+    </div>
+    <div class="detail-label">DRUG</div>
+    <div class="detail-value" style="margin-bottom:12px;">
+      {{ drug_name }}
+    </div>
+    <div class="detail-label">ADVERSE REACTION</div>
+    <div class="detail-value">{{ meddra_pt }}</div>
+  </div>
+
+  <div class="info-box">
+    <strong>What happens next?</strong>
+    A PvPI officer will review your report and enter it into
+    the VigiFlow database. You do not need to do anything else.
+    Keep a copy of the PDF for your records.
+  </div>
+
+  <a href="/icsr-queue" class="btn">Back to Safety Reports →</a>
+  <a href="/" class="btn btn-secondary">Dashboard</a>
+</body>
+</html>

@@ -8,3 +8,5 @@ pywebpush
 cryptography
 Pillow
 pytesseract
+psycopg2-binary
+sqlalchemy
