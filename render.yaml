@@ -8,3 +8,31 @@ services:
     envVars:
       - key: TESSDATA_PREFIX
         value: /usr/share/tesseract-ocr/5/tessdata
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: SMTP_APP_PASSWORD
+        sync: false
+      - key: PVPI_RECIPIENT_EMAIL
+        value: pvpi@ipcindia.net
+      - key: SUBMISSION_COPY_TO
+        sync: false
+  - type: cron
+    name: pharmvigilance-reminders
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m modules.reminder_system
+    schedule: "0 9 * * *"
+    plan: starter
+    envVars:
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
