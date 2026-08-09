@@ -43,7 +43,7 @@ self.addEventListener("notificationclick", function(event) {
 
     if (event.action === "dismiss") return;
 
-    const url = event.notification.data.url || "/";
+    const url = new URL(event.notification.data.url || "/", self.location.origin).href;
 
     event.waitUntil(
         clients.matchAll({ type: "window", includeUncontrolled: true })
