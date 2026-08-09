@@ -27,8 +27,8 @@ from watchdog.events    import FileSystemEventHandler
 
 # ── YOUR VIGIFLOW CREDENTIALS ────────────────────────────────────────────────
 # Register at https://vigiflow.ipc.gov.in to get these
-VIGIFLOW_USERNAME = "vishal raj"   # your VigiFlow username
-VIGIFLOW_PASSWORD = "Vishal06032006pharmd@"   # your VigiFlow password
+VIGIFLOW_USERNAME = os.environ.get("VIGIFLOW_USERNAME", "").strip()
+VIGIFLOW_PASSWORD = os.environ.get("VIGIFLOW_PASSWORD", "")
 VIGIFLOW_URL      = "https://vigiflow.ipc.gov.in"
 # ─────────────────────────────────────────────────────────────────────────────
 

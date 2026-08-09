@@ -53,6 +53,7 @@ def run_daily_reminders():
 
 
 if __name__ == "__main__":
-    # Run once manually if needed
-    print("[Manual] Running reminder check once...")
+    from modules.patient_db import init_db
+    init_db()
+    print("[Scheduler] Running reminder check once...")
     run_daily_reminders()

@@ -4,48 +4,46 @@
 # browser tab is not open.
 
 import json
-import sqlite3
 import os
 from datetime import datetime
+from modules.patient_db import get_conn, q
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                       "database", "pvpro.db")
 
 # ── PASTE YOUR GENERATED VAPID KEYS HERE ─────────────────────────────────────
-VAPID_PUBLIC_KEY  = "PASTE_YOUR_PUBLIC_KEY_HERE"
-VAPID_PRIVATE_KEY = "PASTE_YOUR_PRIVATE_KEY_HERE"
+VAPID_PUBLIC_KEY  = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIMS = {"sub": "mailto:vishal636pharmd@gmail.com"}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def init_push_table():
     """Creates table to store push subscriptions from devices."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("""
+    c.execute(q("""
         CREATE TABLE IF NOT EXISTS push_subscriptions (
-            sub_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            sub_id      SERIAL PRIMARY KEY,
             patient_id  INTEGER,
             subscription_json TEXT,
             device_name TEXT,
             created_at  TEXT
         )
-    """)
+    """))
     conn.commit()
     conn.close()
 
 
 def save_subscription(patient_id, subscription_json, device_name="Unknown"):
     """Saves a device's push subscription endpoint from the browser."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
     # Remove old subscriptions for this patient to avoid duplicate sends
-    c.execute("DELETE FROM push_subscriptions WHERE patient_id=?", (patient_id,))
-    c.execute("""
+    c.execute(q("DELETE FROM push_subscriptions WHERE patient_id=?"), (patient_id,))
+    c.execute(q("""
         INSERT INTO push_subscriptions
         (patient_id, subscription_json, device_name, created_at)
         VALUES (?,?,?,?)
-    """, (patient_id, subscription_json, device_name, str(datetime.now())))
+    """), (patient_id, subscription_json, device_name, str(datetime.now())))
     conn.commit()
     conn.close()
     print(f"[Push] Subscription saved for patient_id={patient_id}")
@@ -53,9 +51,9 @@ def save_subscription(patient_id, subscription_json, device_name="Unknown"):
 
 def get_subscriptions_for_patient(patient_id):
     """Returns all push subscriptions for a patient."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT subscription_json FROM push_subscriptions WHERE patient_id=?",
+    c.execute(q("SELECT subscription_json FROM push_subscriptions WHERE patient_id=?"),
               (patient_id,))
     rows = c.fetchall()
     conn.close()
@@ -67,7 +65,7 @@ def send_push_to_patient(patient_id, title, body, url="/"):
     Sends a real Web Push notification to all of the patient's devices.
     This appears as an OS popup (like WhatsApp) even when the app is closed.
     """
-    if VAPID_PUBLIC_KEY == "PASTE_YOUR_PUBLIC_KEY_HERE":
+    if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
         print("[Push] VAPID keys not configured — skipping push notification")
         return False
 
