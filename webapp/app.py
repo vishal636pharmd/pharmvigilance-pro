@@ -669,7 +669,7 @@ def icsr_submit_email(report_id):
         pdf_path, pdf_err = generate_cioms_pdf(report_id)
         xml_path, xml_err = generate_e2b_xml(report_id)
 
-        if pdf_err and xml_err:
+        if pdf_err or xml_err:
             return jsonify({"error": "Could not generate report files",
                             "pdf_error": pdf_err, "xml_error": xml_err})
 
@@ -687,7 +687,7 @@ def icsr_submit_email(report_id):
         if not YOUR_EMAIL:
             return jsonify({
                 "status": "email_not_configured",
-                "message": "Set YOUR_EMAIL in auto_icsr_pipeline.py first",
+                "message": "Set SMTP_FROM_EMAIL and SMTP_APP_PASSWORD in the hosting environment first",
                 "files_generated": {
                     "pdf": pdf_path if not pdf_err else None,
                     "xml": xml_path if not xml_err else None
@@ -717,7 +717,7 @@ def icsr_submit_email(report_id):
         else:
             return jsonify({
                 "status": "email_failed",
-                "message": "Email sending failed. Check Gmail App Password in auto_icsr_pipeline.py",
+                "message": "Email delivery failed. Check the SMTP environment variables and server logs.",
                 "files_ready": True,
                 "download_pdf": f"/icsr/download/pdf/{report_id}",
                 "download_xml": f"/icsr/download/xml/{report_id}"
