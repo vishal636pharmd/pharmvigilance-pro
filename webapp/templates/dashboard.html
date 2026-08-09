@@ -136,6 +136,11 @@
     🔔 View Notifications →
   </a>
 
+  <button id="enable-notifications" class="btn btn-secondary" type="button">
+    Enable phone notifications
+  </button>
+  <p id="notification-status" class="meta"></p>
+
   <div class="logout"><a href="/logout">Switch profile / Logout</a></div>
 
   <script>
@@ -159,34 +164,61 @@
     return output;
   }
 
-  async function setupPushNotifications() {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  async function setupPushNotifications(requestPermission) {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      throw new Error("This browser does not support push notifications.");
+    }
     try {
       const reg = await navigator.serviceWorker.register("/static/sw.js");
-      const permission = await Notification.requestPermission();
+      let permission = Notification.permission;
+      if (requestPermission && permission === "default") {
+        permission = await Notification.requestPermission();
+      }
       if (permission !== "granted") return;
 
       const keyResp  = await fetch(VAPID_PUBLIC_KEY_URL);
       const keyData  = await keyResp.json();
       const publicKey = keyData.publicKey;
-      if (!publicKey || publicKey === "PASTE_YOUR_PUBLIC_KEY_HERE") return;
+      if (!publicKey) {
+        throw new Error("Notifications are not configured on the server yet.");
+      }
 
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
+      let subscription = await reg.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+      }
 
       await fetch(SUBSCRIBE_URL, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({subscription: subscription.toJSON()})
       });
+      document.getElementById("notification-status").textContent =
+        "Phone notifications are enabled on this device.";
     } catch(err) {
       console.log("[PVPro] Push setup error:", err);
+      throw err;
     }
   }
 
-  window.addEventListener("load", setupPushNotifications);
+  document.getElementById("enable-notifications").addEventListener("click", async () => {
+    const status = document.getElementById("notification-status");
+    try {
+      await setupPushNotifications(true);
+      if (Notification.permission !== "granted") {
+        status.textContent = "Notifications are blocked. Enable them in your browser settings.";
+      }
+    } catch (err) {
+      status.textContent = "Could not enable notifications: " + err.message;
+    }
+  });
+
+  window.addEventListener("load", () => {
+    if (Notification.permission === "granted") setupPushNotifications(false);
+  });
   </script>
 </body>
 </html>

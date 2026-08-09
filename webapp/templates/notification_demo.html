@@ -119,25 +119,5 @@
     </div>
   </div>
 
- <script id="reminder-data" type="application/json">
-{{ reminders_due | tojson }}
-  </script>
-
-  <script>
-    if ("Notification" in window) {
-      if (Notification.permission === "default") {
-        Notification.requestPermission();
-      }
-
-      var dataEl = document.getElementById("reminder-data");
-      var reminderData = JSON.parse(dataEl.textContent);
-
-      if (Notification.permission === "granted" && reminderData.length > 0) {
-        reminderData.forEach(function(r) {
-          new Notification("PVPro - Time for a check-in", {
-            body: "How are you feeling after taking " + r.drug_name + "?"
-          });
-        });
-      }
-    }
-  </script>
+</body>
+</html>
