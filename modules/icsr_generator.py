@@ -7,21 +7,19 @@
 # No separate pharmacist needed — student reporters are valid in India.
 
 import os
-import sqlite3
 from datetime import datetime
+from modules.patient_db import get_conn, q
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                       "database", "pvpro.db")
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "reports", "generated_pdfs")
 
 
 def get_report_data(report_id):
     """Fetches all data needed for ICSR from the database."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
     try:
-        c.execute("""
+        c.execute(q("""
             SELECT sr.report_id, sr.drug_name, sr.raw_symptom,
                    sr.meddra_pt, sr.meddra_soc, sr.severity,
                    sr.timing_ok, sr.drug_stopped, sr.symptom_improved,
@@ -33,7 +31,7 @@ def get_report_data(report_id):
             JOIN purchase_drugs pd ON sr.drug_id = pd.drug_id
             JOIN purchases p ON pd.purchase_id = p.purchase_id
             WHERE sr.report_id = ?
-        """, (report_id,))
+        """), (report_id,))
         row = c.fetchone()
     except Exception as e:
         print(f"[ICSR] DB error: {e}")
@@ -48,17 +46,17 @@ def auto_confirm_by_score(report_id):
     and Naranjo category is Possible/Probable/Definite.
     Returns True if auto-confirmed.
     """
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
     try:
-        c.execute("""
+        c.execute(q("""
             SELECT confidence_score, naranjo_category
             FROM adr_assessments
             WHERE report_id = ? OR
             (SELECT drug_name FROM symptom_reports WHERE report_id=?) =
             drug_name
             ORDER BY assessment_id DESC LIMIT 1
-        """, (report_id, report_id))
+        """), (report_id, report_id))
         row = c.fetchone()
         conn.close()
         if row:
