@@ -13,7 +13,7 @@ from modules.patient_db         import (
     save_symptom_report, save_no_symptom_report,
     get_symptom_reports_for_patient, update_meddra_term,
     get_unprocessed_reports, save_adr_assessment,
-    get_all_assessments, update_assessment_status)
+    get_all_assessments, update_assessment_status, get_conn, q)
 from modules.reminder_system    import run_daily_reminders
 from modules.nlp_engine         import standardize_symptom, process_all_unprocessed
 from modules.meddra_mapper      import get_meddra_hierarchy
@@ -292,17 +292,17 @@ def symptom_form():
     profile = get_profile_by_id(patient_id)
     if not profile:
         return redirect(url_for("index"))
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
     if drug_id:
-        c.execute("""SELECT drug_id,drug_name,reminder_date
+        c.execute(q("""SELECT drug_id,drug_name,reminder_date
                      FROM purchase_drugs
-                     WHERE drug_id=? AND patient_id=?""",
+                     WHERE drug_id=? AND patient_id=?"""),
                   (drug_id, patient_id))
     else:
-        c.execute("""SELECT drug_id,drug_name,reminder_date
+        c.execute(q("""SELECT drug_id,drug_name,reminder_date
                      FROM purchase_drugs WHERE patient_id=?
-                     ORDER BY reminder_date ASC LIMIT 1""",
+                     ORDER BY reminder_date ASC LIMIT 1"""),
                   (patient_id,))
     row = c.fetchone()
     conn.close()
@@ -371,11 +371,11 @@ def nlp_test():
 # ── MODULE 5: CONFIDENCE + ADR ASSESSMENT ────────────────────────────────────
 @app.route("/adr-assess/<int:report_id>")
 def adr_assess(report_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("""SELECT patient_id,drug_name,meddra_pt,severity,
+    c.execute(q("""SELECT patient_id,drug_name,meddra_pt,severity,
                         timing_ok,symptom_improved
-                 FROM symptom_reports WHERE report_id=?""", (report_id,))
+                 FROM symptom_reports WHERE report_id=?"""), (report_id,))
     row = c.fetchone()
     conn.close()
     if not row:
@@ -475,12 +475,12 @@ def run_all_checks():
         from modules.patient_db import get_unprocessed_reports
         reports = get_unprocessed_reports()
         if not reports:
-            conn = sqlite3.connect(DB_PATH)
+            conn = get_conn()
             c = conn.cursor()
             try:
-                c.execute("""SELECT report_id FROM symptom_reports
+                c.execute(q("""SELECT report_id FROM symptom_reports
                              WHERE raw_symptom != 'No symptoms'
-                             ORDER BY report_date DESC LIMIT 20""")
+                             ORDER BY report_date DESC LIMIT 20"""))
                 rows    = c.fetchall()
                 reports = [{"report_id": r[0]} for r in rows]
             except:
@@ -674,10 +674,10 @@ def icsr_submit_email(report_id):
                             "pdf_error": pdf_err, "xml_error": xml_err})
 
         # Get drug and meddra info for this report
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         c = conn.cursor()
-        c.execute("""SELECT drug_name, meddra_pt FROM symptom_reports
-                     WHERE report_id=?""", (report_id,))
+        c.execute(q("""SELECT drug_name, meddra_pt FROM symptom_reports
+                     WHERE report_id=?"""), (report_id,))
         row = c.fetchone()
         conn.close()
 
