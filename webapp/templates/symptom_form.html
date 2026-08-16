@@ -193,7 +193,7 @@
     <div class="naranjo-card">
       <div class="naranjo-question">{{ question[0] | replace('Q', 'Question ') }}: {{ question[1] }}</div>
       {% if question[0] == 'Q6' %}
-      <div class="naranjo-hint">A placebo is a pill with no medicine. Most people have not taken one, so choose “Not sure”.</div>
+      <div class="naranjo-hint">A dummy pill (also called a placebo) has no medicine. Most people have not taken one, so choose “Not sure”.</div>
       {% endif %}
       <div class="naranjo-options">
         <span><input type="radio" id="{{ question[0] }}_yes" name="{{ question[0] }}" value="yes"><label for="{{ question[0] }}_yes">Yes</label></span>
