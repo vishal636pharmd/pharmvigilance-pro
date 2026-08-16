@@ -76,6 +76,21 @@
     .toggle-btn.sel-yes { background: #1565C020; border-color: #1565C0; color: #4FC3F7; }
     .toggle-btn.sel-no  { background: #37474F20; border-color: #546E7A;  color: #B0BEC5; }
 
+    .naranjo-card {
+      background: #1A2A3A; border: 1px solid #1E3A5F; border-radius: 12px;
+      padding: 16px; margin-top: 14px;
+    }
+    .naranjo-question { font-size: 14px; font-weight: 600; line-height: 1.45; }
+    .naranjo-hint { color: #90CAF9; font-size: 12px; line-height: 1.45; margin-top: 6px; }
+    .naranjo-options { display: flex; gap: 8px; margin-top: 12px; }
+    .naranjo-options span { flex: 1; }
+    .naranjo-options label {
+      display: block; text-align: center; padding: 10px 5px; border: 1px solid #1E3A5F;
+      border-radius: 8px; color: #90CAF9; font-size: 13px; cursor: pointer;
+    }
+    .naranjo-options input { display: none; }
+    .naranjo-options input:checked + label { background: #1565C0; border-color: #4FC3F7; color: #fff; }
+
     /* Submit buttons */
     .btn-primary {
       display: block; width: 100%; padding: 16px;
@@ -171,6 +186,22 @@
       <div class="toggle-btn" data-field="symptomImprovedInput" data-value="1" id="improved-yes">Yes</div>
       <div class="toggle-btn" data-field="symptomImprovedInput" data-value="0" id="improved-no">Not sure</div>
     </div>
+
+    <div class="section-label">OPTIONAL SIDE-EFFECT ASSESSMENT</div>
+    <p class="sub" style="margin-bottom: 0;">Answer only if you know. “Not sure” is always okay.</p>
+    {% for question in naranjo_questions %}
+    <div class="naranjo-card">
+      <div class="naranjo-question">{{ question[0] | replace('Q', 'Question ') }}: {{ question[1] }}</div>
+      {% if question[0] == 'Q6' %}
+      <div class="naranjo-hint">A placebo is a pill with no medicine. Most people have not taken one, so choose “Not sure”.</div>
+      {% endif %}
+      <div class="naranjo-options">
+        <span><input type="radio" id="{{ question[0] }}_yes" name="{{ question[0] }}" value="yes"><label for="{{ question[0] }}_yes">Yes</label></span>
+        <span><input type="radio" id="{{ question[0] }}_no" name="{{ question[0] }}" value="no"><label for="{{ question[0] }}_no">No</label></span>
+        <span><input type="radio" id="{{ question[0] }}_unknown" name="{{ question[0] }}" value="unknown" checked><label for="{{ question[0] }}_unknown">Not sure</label></span>
+      </div>
+    </div>
+    {% endfor %}
 
     <div class="error-msg" id="errorMsg">Please select or describe at least one symptom.</div>
 

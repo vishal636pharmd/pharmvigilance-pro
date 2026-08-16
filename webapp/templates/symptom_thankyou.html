@@ -77,6 +77,11 @@
       <div class="value">
         <span class="severity-badge {{ severity }}">{{ severity }}</span>
       </div>
+
+      {% if naranjo %}
+      <div class="label">SIDE-EFFECT ASSESSMENT</div>
+      <div class="value">{{ naranjo.category }} (score {{ naranjo.score }})</div>
+      {% endif %}
     </div>
 
     <div class="info-box">
