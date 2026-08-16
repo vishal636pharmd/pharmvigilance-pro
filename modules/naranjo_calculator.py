@@ -7,7 +7,7 @@ NARANJO_QUESTIONS = [
     ("Q3",  "Improved after drug was stopped or antidote given?",        +1,  0, 0),
     ("Q4",  "Reaction reappeared when drug was re-administered?",        +2, -1, 0),
     ("Q5",  "Alternative causes that could have caused the reaction?",   -1, +2, 0),
-    ("Q6",  "Reaction appeared when placebo given?",                     -1, +1, 0),
+    ("Q6",  "Did you have the same symptom after taking a placebo (a pill with no medicine)?", -1, +1, 0),
     ("Q7",  "Drug detected in toxic concentration in blood/urine?",      +1,  0, 0),
     ("Q8",  "Reaction more severe when dose increased?",                 +1,  0, 0),
     ("Q9",  "Similar reaction to same/related drug before?",             +1,  0, 0),
