@@ -1,7 +1,7 @@
 # modules/icsr_generator.py
 # PURPOSE: Generates ICSR reports in two formats:
 #   1. CIOMS I PDF (standard paper report format)
-#   2. ICH E2B(R3) XML (electronic format accepted by PvPI VigiFlow)
+#   2. E2B-style XML research export (for authorised AMC/MAH review)
 #
 # As a Pharm.D student, YOU are the reporter.
 # No separate pharmacist needed — student reporters are valid in India.
@@ -235,8 +235,9 @@ def generate_cioms_pdf(report_id):
 
 def generate_e2b_xml(report_id):
     """
-    Generates an ICH E2B(R3) compatible XML file.
-    This is the electronic format accepted by PvPI VigiFlow.
+    Generates an E2B-style XML research export.
+    It is not a certified gateway submission and must be reviewed by an
+    authorised AMC/MAH before any official regulatory submission.
     """
     row = get_report_data(report_id)
     if not row:
