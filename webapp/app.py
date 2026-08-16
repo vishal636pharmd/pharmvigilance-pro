@@ -308,9 +308,12 @@ def symptom_form():
     conn.close()
     if not row:
         return redirect(url_for("index"))
-    return render_template("symptom_form.html", patient=profile,
-                           drug={"drug_id": row[0], "drug_name": row[1],
-                                 "reminder_date": row[2]})
+    return render_template(
+        "symptom_form.html", patient=profile,
+        drug={"drug_id": row[0], "drug_name": row[1],
+              "reminder_date": row[2]},
+        naranjo_questions=[question for question in NARANJO_QUESTIONS
+                           if question[0] not in ("Q2", "Q3")])
 
 
 @app.route("/symptom/submit", methods=["POST"])
@@ -332,11 +335,23 @@ def symptom_submit():
     result    = standardize_symptom(raw_symptom)
     hierarchy = get_meddra_hierarchy(result["meddra_pt"])
     update_meddra_term(report_id, result["meddra_pt"], hierarchy["soc"])
+    # Q2 and Q3 use answers already collected in the symptom form.
+    answers = {f"Q{i}": request.form.get(f"Q{i}", "unknown")
+               for i in range(1, 11)}
+    answers["Q2"] = "yes" if timing_ok else "no"
+    answers["Q3"] = "yes" if symptom_improved else "unknown"
+    naranjo = calculate_naranjo(answers)
+    confidence = calculate_confidence(
+        drug_name, result["meddra_pt"] or "", timing_ok,
+        symptom_improved, severity)
+    save_adr_assessment(
+        patient_id, drug_name, result["meddra_pt"] or "Unknown",
+        confidence["score"], naranjo["score"], naranjo["category"])
     return render_template("symptom_thankyou.html",
                            no_symptom=False, drug_name=drug_name,
                            symptom=raw_symptom,
                            meddra_pt=result["meddra_pt"],
-                           severity=severity)
+                           severity=severity, naranjo=naranjo)
 
 
 @app.route("/symptom/none", methods=["POST"])
