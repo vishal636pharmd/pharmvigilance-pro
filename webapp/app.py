@@ -227,7 +227,7 @@ def demo_bill_link():
 
     from datetime import datetime as _dt
     sample_html = f"""<html><body>
-    <p>Name: VISHAL   Mobile: 9445571426</p>
+    <p>Name: DEMO PATIENT   Mobile: 0000000000</p>
     <p>Bill No: 16280WS0097250</p>
     <p>Bill Date: {_dt.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
     <table>
