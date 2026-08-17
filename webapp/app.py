@@ -511,16 +511,25 @@ def run_all_checks():
                 "final_action": result.get("final_action"),
                 "message":      result.get("message")
             })
-        return jsonify({
+        payload = {
             "total_checked":  len(results),
             "icsr_generated": sum(1 for r in results
                                   if r["final_action"] == "icsr_generated"),
             "no_icsr_needed": sum(1 for r in results
                                   if r["final_action"] == "no_icsr_needed"),
             "results": results
-        })
+        }
+        if request.args.get("format") == "json":
+            return jsonify(payload)
+        return redirect(url_for(
+            "icsr_queue_page",
+            message=(f"Safety review completed for {payload['total_checked']} "
+                     "report(s). Draft exports are available in the queue.")))
     except Exception as e:
-        return jsonify({"error": str(e)})
+        if request.args.get("format") == "json":
+            return jsonify({"error": str(e)}), 500
+        return redirect(url_for("icsr_queue_page", error=(
+            "Safety review could not finish. Please check the server log and try again.")))
 
 
 @app.route("/icsr-queue")
@@ -529,7 +538,9 @@ def icsr_queue_page():
         queue = get_icsr_queue()
     except:
         queue = []
-    return render_template("icsr_queue.html", queue=queue)
+    return render_template("icsr_queue.html", queue=queue,
+                           message=request.args.get("message"),
+                           error=request.args.get("error"))
 
 
 @app.route("/icsr/download/pdf/<int:report_id>")
@@ -700,14 +711,9 @@ def icsr_submit_email(report_id):
         meddra_pt = row[1] if row else "Unknown ADR"
 
         if not YOUR_EMAIL:
-            return jsonify({
-                "status": "email_not_configured",
-                "message": "Set SMTP_FROM_EMAIL and SMTP_APP_PASSWORD in the hosting environment first",
-                "files_generated": {
-                    "pdf": pdf_path if not pdf_err else None,
-                    "xml": xml_path if not xml_err else None
-                }
-            })
+            return render_template(
+                "email_not_configured.html", report_id=report_id,
+                drug_name=drug_name, meddra_pt=meddra_pt)
 
         # Send the email
         sent = _send_icsr_email(
