@@ -88,6 +88,12 @@
     .known-note { font-size: 13px; color: #546E7A; }
     .empty { text-align: center; padding: 40px;
              color: #546E7A; font-size: 14px; }
+    .notice { background: #2E7D3220; border: 1px solid #2E7D32;
+              color: #A5D6A7; border-radius: 10px; padding: 13px;
+              font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+    .error { background: #B71C1C22; border: 1px solid #EF5350;
+             color: #FFCDD2; border-radius: 10px; padding: 13px;
+             font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
   </style>
 </head>
 <body>
@@ -99,6 +105,9 @@
     Reported ADRs checked against the FDA drug safety database.
     Undocumented reactions are flagged for regulatory submission.
   </p>
+
+  {% if message %}<div class="notice">{{ message }}</div>{% endif %}
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
   <div class="legend">
     <div class="legend-item">

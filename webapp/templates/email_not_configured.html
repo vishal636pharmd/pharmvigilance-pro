@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVPro — Email Setup Required</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0D1B2A;
+           color: #E8F4FD; min-height: 100vh; padding: 40px 20px;
+           display: grid; place-items: center; }
+    main { max-width: 480px; background: #1A2A3A; border-radius: 14px;
+           padding: 28px; border: 1px solid #1E3A5F; }
+    h1 { font-size: 23px; margin: 0 0 10px; }
+    p { color: #B0BEC5; line-height: 1.65; }
+    .note { margin: 20px 0; padding: 14px; border-radius: 10px;
+            background: #1565C020; border: 1px solid #1565C0;
+            color: #90CAF9; font-size: 13px; line-height: 1.6; }
+    a { display: block; text-align: center; text-decoration: none; padding: 13px;
+        background: #1565C0; color: #fff; border-radius: 10px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Email delivery is not configured</h1>
+    <p>The report files are ready, but this deployment does not yet have server email settings. No email has been sent.</p>
+    <div class="note">
+      For a private test deployment, configure <code>SMTP_FROM_EMAIL</code> and
+      <code>SMTP_APP_PASSWORD</code> in the hosting environment. For this project
+      demo, use the PDF and E2B export buttons instead of sending an email.
+    </div>
+    <a href="/icsr-queue">Back to Safety Reports</a>
+  </main>
+</body>
+</html>
