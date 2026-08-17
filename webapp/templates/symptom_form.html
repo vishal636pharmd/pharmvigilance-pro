@@ -191,7 +191,7 @@
     <p class="sub" style="margin-bottom: 0;">Answer only if you know. “Not sure” is always okay.</p>
     {% for question in naranjo_questions %}
     <div class="naranjo-card">
-      <div class="naranjo-question">{{ question[0] | replace('Q', 'Question ') }}: {{ question[1] }}</div>
+      <div class="naranjo-question">Question {{ loop.index }}: {{ question[1] }}</div>
       {% if question[0] == 'Q6' %}
       <div class="naranjo-hint">A dummy pill (also called a placebo) has no medicine. Most people have not taken one, so choose “Not sure”.</div>
       {% endif %}
